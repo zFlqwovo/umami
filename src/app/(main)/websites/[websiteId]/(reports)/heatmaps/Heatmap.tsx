@@ -479,7 +479,7 @@ function ScrollHeatmapView({
                       style={{
                         top: `${band.fromPct}%`,
                         height: `${Math.max(0, band.toPct - band.fromPct)}%`,
-                        background: `hsla(${hue}, 90%, 55%, ${0.12 + intensity * 0.45})`,
+                        background: intensity > 0 ? `hsla(${hue}, 90%, 55%, ${0.12 + intensity * 0.45})` : 'none',
                       }}
                       title={`${band.toPct}% depth • ${formatLongNumber(band.reached)} sessions reached`}
                     >
