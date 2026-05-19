@@ -1,3 +1,9 @@
+ALTER TABLE "website" RENAME COLUMN "replay_enabled" TO "recorder_enabled";
+
+UPDATE "website"
+SET "replay_config" = COALESCE("replay_config", '{}'::jsonb) || '{"replayEnabled": true}'::jsonb
+WHERE "recorder_enabled" = true;
+
 -- CreateTable
 CREATE TABLE "heatmap_event" (
     "heatmap_event_id" UUID NOT NULL,

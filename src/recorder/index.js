@@ -3,14 +3,15 @@ import { record } from 'rrweb';
 (window => {
   const { document } = window;
   const { currentScript } = document;
+
   if (!currentScript) return;
 
   const _data = 'data-';
   const attr = currentScript.getAttribute.bind(currentScript);
   const config = value => attr(`${_data}${value}`);
 
-  const website = config(`website-id`);
-  const hostUrl = config(`host-url`);
+  const website = config('website-id');
+  const hostUrl = config('host-url');
 
   if (!website) return;
 
@@ -18,41 +19,45 @@ import { record } from 'rrweb';
     hostUrl || '__COLLECT_API_HOST__' || currentScript.src.split('/').slice(0, -1).join('/');
   const hostBase = host.replace(/\/$/, '');
   const endpoint = `${hostBase}__COLLECT_REPLAY_ENDPOINT__`;
-  const configEndpoint = `${hostBase}__RECORDER_CONFIG_ENDPOINT__`.replace(
-    '{websiteId}',
-    website,
-  );
+  const configEndpoint = `${hostBase}__RECORDER_CONFIG_ENDPOINT__`.replace('{websiteId}', website);
 
-  const FLUSH_EVENT_COUNT = 100;
-  const FLUSH_INTERVAL = 10000;
+  const REPLAY_FLUSH_EVENT_COUNT = 100;
+  const REPLAY_FLUSH_INTERVAL = 10000;
+  const HEATMAP_FLUSH_EVENT_COUNT = 20;
+  const HEATMAP_FLUSH_INTERVAL = 5000;
 
+  let replayEnabled = false;
+  let heatmapEnabled = false;
   let sampleRate = 0.15;
+  let heatmapSampleRate = 0.15;
   let maskLevel = 'moderate';
   let maxDuration = 300000;
   let blockSelector = '';
 
-  let eventBuffer = [];
-  let stopFn = null;
-  let flushTimer = null;
-  let startTime = null;
-  let stopped = false;
-  let recorderReady = false;
-  let customEventBuffer = [];
+  let replayBuffer = [];
+  let heatmapBuffer = [];
+  let replayStopFn = null;
+  let replayFlushTimer = null;
+  let heatmapFlushTimer = null;
+  let replayStartTime = null;
+  let replayStopped = false;
+  let heatmapStarted = false;
 
-  const sendEvents = (events, useKeepalive = false) => {
-    const session = window.umami?.getSession?.();
-    if (!session?.cache) return;
+  const getSessionCache = () => window.umami?.getSession?.()?.cache;
+
+  const sendPayload = (type, payload, useKeepalive = false) => {
+    const cache = getSessionCache();
+
+    if (!cache) return;
 
     const body = JSON.stringify({
-      type: 'record',
+      type,
       payload: {
         website,
-        events,
-        timestamp: Math.floor(Date.now() / 1000),
+        ...payload,
       },
     });
 
-    // keepalive has a 64KB body limit — only use it for small payloads on unload
     const keepalive = useKeepalive && body.length < 60000;
 
     return fetch(endpoint, {
@@ -61,67 +66,79 @@ import { record } from 'rrweb';
       body,
       headers: {
         'Content-Type': 'application/json',
-        'x-umami-cache': session.cache,
+        'x-umami-cache': cache,
       },
       credentials: 'omit',
     }).catch(() => {});
   };
 
-  const flush = (useKeepalive = false) => {
-    if (!eventBuffer.length) return;
+  const flushReplay = (useKeepalive = false) => {
+    if (!replayBuffer.length) return;
 
-    const events = eventBuffer;
-    eventBuffer = [];
+    const events = replayBuffer;
+    replayBuffer = [];
 
-    sendEvents(events, useKeepalive);
+    sendPayload(
+      'record',
+      {
+        events,
+        timestamp: Math.floor(Date.now() / 1000),
+      },
+      useKeepalive,
+    );
   };
 
-  const scheduleFlush = () => {
-    if (flushTimer) clearTimeout(flushTimer);
-    flushTimer = setTimeout(flush, FLUSH_INTERVAL);
+  const flushHeatmap = (useKeepalive = false) => {
+    if (!heatmapBuffer.length) return;
+
+    const events = heatmapBuffer;
+    heatmapBuffer = [];
+
+    sendPayload(
+      'heatmap',
+      {
+        events,
+        timestamp: Math.floor(Date.now() / 1000),
+      },
+      useKeepalive,
+    );
   };
 
-  const stop = () => {
-    if (stopped) return;
-    stopped = true;
-    if (flushTimer) clearTimeout(flushTimer);
-    flush();
-    if (stopFn) stopFn();
+  const scheduleReplayFlush = () => {
+    if (replayFlushTimer) clearTimeout(replayFlushTimer);
+    replayFlushTimer = setTimeout(() => flushReplay(), REPLAY_FLUSH_INTERVAL);
   };
 
-  const flushCustomEvents = () => {
-    if (!recorderReady || !customEventBuffer.length) return;
-
-    const events = customEventBuffer;
-    customEventBuffer = [];
-
-    for (const event of events) {
-      addCustomEvent(event.tag, event.payload);
-    }
+  const scheduleHeatmapFlush = () => {
+    if (heatmapFlushTimer) clearTimeout(heatmapFlushTimer);
+    heatmapFlushTimer = setTimeout(() => flushHeatmap(), HEATMAP_FLUSH_INTERVAL);
   };
 
-  const addCustomEvent = (tag, payload) => {
-    if (stopped) return;
+  const queueHeatmapEvent = event => {
+    heatmapBuffer.push({
+      ...event,
+      timestamp: Date.now(),
+    });
 
-    if (!recorderReady) {
-      customEventBuffer.push({ tag, payload });
+    if (heatmapBuffer.length >= HEATMAP_FLUSH_EVENT_COUNT) {
+      flushHeatmap();
       return;
     }
 
-    try {
-      record.addCustomEvent(tag, payload);
-    } catch (e) {
-      if (e?.message === 'please add custom event after start recording') {
-        recorderReady = false;
-        customEventBuffer.push({ tag, payload });
-        setTimeout(() => {
-          recorderReady = true;
-          flushCustomEvents();
-        }, 0);
-        return;
-      }
+    scheduleHeatmapFlush();
+  };
 
-      throw e;
+  const stopReplay = () => {
+    if (replayStopped) return;
+
+    replayStopped = true;
+
+    if (replayFlushTimer) clearTimeout(replayFlushTimer);
+    flushReplay();
+
+    if (replayStopFn) {
+      replayStopFn();
+      replayStopFn = null;
     }
   };
 
@@ -132,16 +149,25 @@ import { record } from 'rrweb';
           maskAllInputs: true,
           maskTextSelector: '*',
         };
-      default: // moderate
+      default:
         return {
           maskAllInputs: true,
         };
     }
   };
 
+  const shouldSample = value => {
+    if (value >= 1) return true;
+    if (value <= 0) return false;
+
+    return Math.random() <= value;
+  };
+
   const measureElementWidth = element => {
     if (!element) return 0;
+
     const rect = element.getBoundingClientRect?.();
+
     return Math.max(
       element.scrollWidth || 0,
       element.offsetWidth || 0,
@@ -152,7 +178,9 @@ import { record } from 'rrweb';
 
   const measureElementHeight = element => {
     if (!element) return 0;
+
     const rect = element.getBoundingClientRect?.();
+
     return Math.max(
       element.scrollHeight || 0,
       element.offsetHeight || 0,
@@ -163,6 +191,7 @@ import { record } from 'rrweb';
 
   const measureDocumentBounds = doc => {
     const body = doc?.body;
+
     if (!body) {
       return { width: 0, height: 0 };
     }
@@ -174,10 +203,12 @@ import { record } from 'rrweb';
 
     while (node) {
       const rect = node.getBoundingClientRect?.();
+
       if (rect && (rect.width > 0 || rect.height > 0)) {
         maxRight = Math.max(maxRight, rect.right);
         maxBottom = Math.max(maxBottom, rect.bottom);
       }
+
       node = walker.nextNode();
     }
 
@@ -187,66 +218,7 @@ import { record } from 'rrweb';
     };
   };
 
-  const waitForSession = (attempts = 0) => {
-    if (attempts > 50) return;
-
-    const session = window.umami?.getSession?.();
-    if (session?.cache) {
-      beginRecording();
-    } else {
-      setTimeout(() => waitForSession(attempts + 1), 100);
-    }
-  };
-
-  const beginRecording = () => {
-    startTime = Date.now();
-
-    const maskConfig = getMaskConfig(maskLevel);
-
-    stopFn = record({
-      emit(event) {
-        if (stopped) return;
-
-        if (Date.now() - startTime > maxDuration) {
-          stop();
-          return;
-        }
-
-        eventBuffer.push(event);
-        recorderReady = true;
-        flushCustomEvents();
-
-        if (eventBuffer.length >= FLUSH_EVENT_COUNT) {
-          flush();
-        }
-
-        scheduleFlush();
-      },
-      ...maskConfig,
-      inlineStylesheet: true,
-      slimDOMOptions: {
-        script: true,
-        comment: true,
-        headMetaDescKeywords: true,
-        headMetaSocial: true,
-        headMetaRobots: true,
-        headMetaHttpEquiv: true,
-        headMetaAuthorship: true,
-        headMetaVerification: true,
-      },
-      recordCanvas: false,
-      recordCrossOriginIframes: false,
-      checkoutEveryNms: 30000,
-      ...(blockSelector && { blockSelector }),
-    });
-    recorderReady = true;
-    flushCustomEvents();
-
-    let scrollUrl = location.href;
-    let maxScrollPct = 0;
-    let lastFlushedScrollPct = 0;
-    let scrollTimer = null;
-
+  const createPageMetrics = () => {
     const computePageMetrics = ({ includeBounds = false } = {}) => {
       const scrollingElement = document.scrollingElement || document.documentElement;
       const firstChild = document.body?.firstElementChild;
@@ -286,11 +258,69 @@ import { record } from 'rrweb';
       };
     };
 
+    return {
+      computePageMetrics,
+      computeScrollPct,
+    };
+  };
+
+  const beginReplayCapture = () => {
+    replayStartTime = Date.now();
+
+    replayStopFn = record({
+      emit(event) {
+        if (replayStopped) return;
+
+        if (Date.now() - replayStartTime > maxDuration) {
+          stopReplay();
+          return;
+        }
+
+        replayBuffer.push(event);
+
+        if (replayBuffer.length >= REPLAY_FLUSH_EVENT_COUNT) {
+          flushReplay();
+        }
+
+        scheduleReplayFlush();
+      },
+      ...getMaskConfig(maskLevel),
+      inlineStylesheet: true,
+      slimDOMOptions: {
+        script: true,
+        comment: true,
+        headMetaDescKeywords: true,
+        headMetaSocial: true,
+        headMetaRobots: true,
+        headMetaHttpEquiv: true,
+        headMetaAuthorship: true,
+        headMetaVerification: true,
+      },
+      recordCanvas: false,
+      recordCrossOriginIframes: false,
+      checkoutEveryNms: 30000,
+      ...(blockSelector && { blockSelector }),
+    });
+  };
+
+  const beginHeatmapCapture = () => {
+    if (heatmapStarted) return;
+
+    heatmapStarted = true;
+
+    const { computePageMetrics, computeScrollPct } = createPageMetrics();
+    let scrollUrl = location.href;
+    let maxScrollPct = 0;
+    let lastFlushedScrollPct = 0;
+    let scrollTimer = null;
+
     const flushScroll = () => {
       if (maxScrollPct <= 0 || maxScrollPct <= lastFlushedScrollPct) return;
+
       const { pageW, pageH } = computePageMetrics({ includeBounds: true });
 
-      addCustomEvent('scroll-progress', {
+      queueHeatmapEvent({
+        type: 'scroll',
         url: scrollUrl,
         scrollPct: maxScrollPct,
         viewportW: window.innerWidth,
@@ -298,6 +328,7 @@ import { record } from 'rrweb';
         pageW,
         pageH,
       });
+
       lastFlushedScrollPct = maxScrollPct;
       maxScrollPct = 0;
     };
@@ -320,7 +351,8 @@ import { record } from 'rrweb';
       const pageW = Math.max(rawPageW, Math.ceil(pageX), Math.ceil(targetRight));
       const pageH = Math.max(rawPageH, Math.ceil(pageY), Math.ceil(targetBottom));
 
-      addCustomEvent('heatmap-click', {
+      queueHeatmapEvent({
+        type: 'click',
         url: location.href,
         x: Math.round(event.clientX),
         y: Math.round(event.clientY),
@@ -335,9 +367,14 @@ import { record } from 'rrweb';
 
     const onScroll = () => {
       if (scrollTimer) return;
+
       scrollTimer = setTimeout(() => {
         const { pct } = computeScrollPct();
-        if (pct > maxScrollPct) maxScrollPct = pct;
+
+        if (pct > maxScrollPct) {
+          maxScrollPct = pct;
+        }
+
         flushScroll();
         scrollTimer = null;
       }, 400);
@@ -345,16 +382,17 @@ import { record } from 'rrweb';
 
     const onUrlChange = () => {
       if (location.href === scrollUrl) return;
+
       flushScroll();
       scrollUrl = location.href;
       lastFlushedScrollPct = 0;
-      addCustomEvent('url-change', { url: scrollUrl });
     };
 
     const hookHistory = method => {
-      const orig = history[method];
+      const original = history[method];
+
       history[method] = function (...args) {
-        const result = orig.apply(this, args);
+        const result = original.apply(this, args);
         onUrlChange();
         return result;
       };
@@ -368,32 +406,80 @@ import { record } from 'rrweb';
 
     {
       const { pct } = computeScrollPct();
-      if (pct > maxScrollPct) maxScrollPct = pct;
+
+      if (pct > maxScrollPct) {
+        maxScrollPct = pct;
+      }
+
       flushScroll();
     }
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
         flushScroll();
-        flush(true);
+        flushHeatmap(true);
       }
     });
 
     window.addEventListener('beforeunload', () => {
       flushScroll();
-      flush(true);
+      flushHeatmap(true);
+    });
+  };
+
+  const waitForSession = (callback, attempts = 0) => {
+    if (attempts > 50) return;
+
+    if (getSessionCache()) {
+      callback();
+      return;
+    }
+
+    setTimeout(() => waitForSession(callback, attempts + 1), 100);
+  };
+
+  const startCaptures = () => {
+    const shouldRecordReplay = replayEnabled && shouldSample(sampleRate);
+    const shouldRecordHeatmap = heatmapEnabled && shouldSample(heatmapSampleRate);
+
+    if (shouldRecordHeatmap) {
+      beginHeatmapCapture();
+    }
+
+    if (shouldRecordReplay) {
+      beginReplayCapture();
+    }
+
+    if (!shouldRecordHeatmap && !shouldRecordReplay) {
+      return;
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        flushReplay(true);
+      }
+    });
+
+    window.addEventListener('beforeunload', () => {
+      flushReplay(true);
     });
   };
 
   const bootstrap = async () => {
     try {
       const response = await fetch(configEndpoint, { credentials: 'omit' });
+
       if (!response.ok) return;
 
       const data = await response.json();
+
       if (!data?.enabled) return;
 
+      replayEnabled = data.replayEnabled === true;
+      heatmapEnabled = data.heatmapEnabled === true;
+
       if (typeof data.sampleRate === 'number') sampleRate = data.sampleRate;
+      if (typeof data.heatmapSampleRate === 'number') heatmapSampleRate = data.heatmapSampleRate;
       if (typeof data.maskLevel === 'string') maskLevel = data.maskLevel;
       if (typeof data.maxDuration === 'number') maxDuration = data.maxDuration;
       if (typeof data.blockSelector === 'string') blockSelector = data.blockSelector;
@@ -401,14 +487,17 @@ import { record } from 'rrweb';
       return;
     }
 
-    // Sample rate check
-    if (sampleRate < 1 && Math.random() > sampleRate) return;
+    if (!replayEnabled && !heatmapEnabled) {
+      return;
+    }
 
     if (document.readyState === 'complete') {
-      waitForSession();
+      waitForSession(startCaptures);
     } else {
       document.addEventListener('readystatechange', () => {
-        if (document.readyState === 'complete') waitForSession();
+        if (document.readyState === 'complete') {
+          waitForSession(startCaptures);
+        }
       });
     }
   };
