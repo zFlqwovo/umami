@@ -4,9 +4,9 @@ import { CLICKHOUSE, PRISMA, runQuery } from '@/lib/db';
 import prisma from '@/lib/prisma';
 import type { QueryFilters } from '@/lib/types';
 import {
+  type HeatmapSnapshotImage,
   ensureHeatmapSnapshot,
   shouldSkipSnapshot,
-  type HeatmapSnapshotImage,
 } from './ensureHeatmapSnapshot';
 
 const FUNCTION_NAME = 'getHeatmap';
@@ -86,7 +86,7 @@ async function relationalQuery(
   const { startDate, endDate, urlPath, mode = 'click' } = parameters;
   const eventType = mode === 'scroll' ? HEATMAP_EVENT_TYPE.scroll : HEATMAP_EVENT_TYPE.click;
   const filterContext = getRelationalHeatmapFilterContext(websiteId, parameters);
-  const clickPageFilter =
+  const pageFilter =
     mode === 'click'
       ? `
       and x is not null
@@ -98,7 +98,12 @@ async function relationalQuery(
       and viewport_w is not null
       and viewport_h is not null
     `
-      : '';
+      : `
+      and scroll_pct is not null
+      and page_w is not null
+      and page_h is not null
+      and viewport_w is not null
+    `;
 
   const rawPages: HeatmapPage[] = await rawQuery(
     `
@@ -111,7 +116,7 @@ async function relationalQuery(
     where h.website_id = {{websiteId::uuid}}
       and h.event_type = {{eventType}}
       and h.created_at between {{startDate}} and {{endDate}}
-      ${clickPageFilter}
+      ${pageFilter}
     group by h.url_path
     order by sessions desc, count desc
     limit ${PAGE_LIMIT}
@@ -267,7 +272,7 @@ async function clickhouseQuery(
   const { startDate, endDate, urlPath, mode = 'click' } = parameters;
   const eventType = mode === 'scroll' ? HEATMAP_EVENT_TYPE.scroll : HEATMAP_EVENT_TYPE.click;
   const filterContext = getClickhouseHeatmapFilterContext(websiteId, parameters);
-  const clickPageFilter =
+  const pageFilter =
     mode === 'click'
       ? `
       and x is not null
@@ -279,7 +284,12 @@ async function clickhouseQuery(
       and viewport_w is not null
       and viewport_h is not null
     `
-      : '';
+      : `
+      and scroll_pct is not null
+      and page_w is not null
+      and page_h is not null
+      and viewport_w is not null
+    `;
 
   const pageRows = await rawQuery<
     { urlPath: string; count: string | number; sessions: string | number }[]
@@ -294,7 +304,7 @@ async function clickhouseQuery(
     where h.website_id = {websiteId:UUID}
       and h.event_type = {eventType:UInt8}
       and h.created_at between {startDate:DateTime64} and {endDate:DateTime64}
-      ${clickPageFilter}
+      ${pageFilter}
     group by h.url_path
     order by sessions desc, count desc
     limit ${PAGE_LIMIT}

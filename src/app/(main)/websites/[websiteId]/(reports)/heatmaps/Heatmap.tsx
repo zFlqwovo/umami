@@ -408,18 +408,18 @@ function ScrollHeatmapView({
 
   for (let depth = 0; depth < 100; depth += SCROLL_BUCKET_SIZE) {
     const reached = Math.max(0, totalSessions - dropped);
-    const ratio = totalSessions ? reached / totalSessions : 0;
+    dropped += sessionsByDepth.get(depth) ?? 0;
+    const nextReached = Math.max(0, totalSessions - dropped);
+    const ratio = totalSessions ? nextReached / totalSessions : 0;
 
     if (reached > 0) {
       bands.push({
         fromPct: depth,
         toPct: Math.min(100, depth + SCROLL_BUCKET_SIZE),
-        reached,
+        reached: nextReached,
         ratio,
       });
     }
-
-    dropped += sessionsByDepth.get(depth) ?? 0;
   }
 
   return (
@@ -481,10 +481,10 @@ function ScrollHeatmapView({
                         height: `${Math.max(0, band.toPct - band.fromPct)}%`,
                         background: `hsla(${hue}, 90%, 55%, ${0.12 + intensity * 0.45})`,
                       }}
-                      title={`${band.fromPct}% depth • ${formatLongNumber(band.reached)} sessions reached`}
+                      title={`${band.toPct}% depth • ${formatLongNumber(band.reached)} sessions reached`}
                     >
                       <span className={styles.scrollBandLabel}>
-                        {band.fromPct}% depth • {Math.round(intensity * 100)}% reached
+                        {band.toPct}% depth • {Math.round(intensity * 100)}% reached
                       </span>
                     </div>
                   );
