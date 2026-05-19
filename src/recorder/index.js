@@ -244,6 +244,7 @@ import { record } from 'rrweb';
 
     let scrollUrl = location.href;
     let maxScrollPct = 0;
+    let lastFlushedScrollPct = 0;
     let scrollTimer = null;
 
     const computePageMetrics = ({ includeBounds = false } = {}) => {
@@ -286,7 +287,7 @@ import { record } from 'rrweb';
     };
 
     const flushScroll = () => {
-      if (maxScrollPct <= 0) return;
+      if (maxScrollPct <= 0 || maxScrollPct <= lastFlushedScrollPct) return;
       const { pageW, pageH } = computePageMetrics({ includeBounds: true });
 
       addCustomEvent('scroll-progress', {
@@ -297,6 +298,7 @@ import { record } from 'rrweb';
         pageW,
         pageH,
       });
+      lastFlushedScrollPct = maxScrollPct;
       maxScrollPct = 0;
     };
 
@@ -336,14 +338,16 @@ import { record } from 'rrweb';
       scrollTimer = setTimeout(() => {
         const { pct } = computeScrollPct();
         if (pct > maxScrollPct) maxScrollPct = pct;
+        flushScroll();
         scrollTimer = null;
-      }, 200);
+      }, 400);
     };
 
     const onUrlChange = () => {
       if (location.href === scrollUrl) return;
       flushScroll();
       scrollUrl = location.href;
+      lastFlushedScrollPct = 0;
       addCustomEvent('url-change', { url: scrollUrl });
     };
 
@@ -365,6 +369,7 @@ import { record } from 'rrweb';
     {
       const { pct } = computeScrollPct();
       if (pct > maxScrollPct) maxScrollPct = pct;
+      flushScroll();
     }
 
     document.addEventListener('visibilitychange', () => {

@@ -44,7 +44,7 @@ const connectSrc = ["'self'", 'https:', apiUrlOrigin].filter(Boolean).join(' ');
 
 const contentSecurityPolicy = `
   default-src 'self';
-  img-src 'self' https: data:;
+  img-src 'self' https: data: blob:;
   script-src 'self' 'unsafe-eval' 'unsafe-inline';
   style-src 'self' 'unsafe-inline';
   connect-src ${connectSrc};
