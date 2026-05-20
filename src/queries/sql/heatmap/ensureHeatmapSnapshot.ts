@@ -1,5 +1,7 @@
+import clickhouse from '@/lib/clickhouse';
 import prisma from '@/lib/prisma';
 import { uuid } from '@/lib/crypto';
+import { getHeatmapSnapshot, putHeatmapSnapshot } from '@/lib/heatmap-s3';
 import { getWebsite } from '@/queries/prisma';
 
 const SNAPSHOT_STATUS = {
@@ -10,7 +12,6 @@ const SNAPSHOT_STATUS = {
 
 const SNAPSHOT_RETRY_DELAY_MS = 15 * 60 * 1000;
 const SNAPSHOT_PENDING_WINDOW_MS = 30 * 1000;
-
 export type HeatmapSnapshotStatus = (typeof SNAPSHOT_STATUS)[keyof typeof SNAPSHOT_STATUS];
 
 export interface HeatmapSnapshotImage {
@@ -35,6 +36,7 @@ interface SnapshotRecord {
   pageH: number;
   status: HeatmapSnapshotStatus;
   mimeType: string | null;
+  objectKey: string | null;
   imageSize: number | null;
   error: string | null;
   hasImage: boolean;
@@ -56,6 +58,12 @@ interface CaptureResult {
   pageW: number;
   pageH: number;
 }
+
+const CLICKHOUSE_SNAPSHOT_STATUS = {
+  pending: 0,
+  ready: 1,
+  failed: 2,
+} as const;
 
 async function measurePage(page: any) {
   return page.evaluate(() => {
@@ -144,6 +152,19 @@ async function findSnapshot(
   viewportW: number,
   viewportH: number,
 ): Promise<SnapshotRecord | null> {
+  if (clickhouse.enabled) {
+    return findClickhouseSnapshot(websiteId, urlPath, viewportW, viewportH);
+  }
+
+  return findRelationalSnapshot(websiteId, urlPath, viewportW, viewportH);
+}
+
+async function findRelationalSnapshot(
+  websiteId: string,
+  urlPath: string,
+  viewportW: number,
+  viewportH: number,
+): Promise<SnapshotRecord | null> {
   const rows = await prisma.rawQuery(
     `
     select
@@ -156,6 +177,7 @@ async function findSnapshot(
       page_h as "pageH",
       status,
       mime_type as "mimeType",
+      null as "objectKey",
       image_size as "imageSize",
       error,
       image_data is not null as "hasImage",
@@ -172,6 +194,78 @@ async function findSnapshot(
   );
 
   return rows?.[0] ?? null;
+}
+
+async function findClickhouseSnapshot(
+  websiteId: string,
+  urlPath: string,
+  viewportW: number,
+  viewportH: number,
+): Promise<SnapshotRecord | null> {
+  const rows = await clickhouse.rawQuery<
+    {
+      id: string;
+      websiteId: string;
+      urlPath: string;
+      viewportW: number;
+      viewportH: number;
+      pageW: number;
+      pageH: number;
+      status: number;
+      mimeType: string | null;
+      objectKey: string;
+      imageSize: number | null;
+      error: string | null;
+      createdAt: string;
+    }[]
+  >(
+    `
+    select
+      snapshot_id as id,
+      website_id as websiteId,
+      url_path as urlPath,
+      viewport_w as viewportW,
+      viewport_h as viewportH,
+      page_w as pageW,
+      page_h as pageH,
+      status,
+      mime_type as mimeType,
+      object_key as objectKey,
+      image_size as imageSize,
+      error,
+      created_at as createdAt
+    from heatmap_snapshot
+    where website_id = {websiteId:UUID}
+      and url_path = {urlPath:String}
+      and viewport_w = {viewportW:UInt32}
+      and viewport_h = {viewportH:UInt32}
+    order by created_at desc
+    limit 1
+    `,
+    { websiteId, urlPath, viewportW, viewportH },
+    'findHeatmapSnapshot',
+  );
+
+  const row = rows?.[0];
+
+  if (!row) {
+    return null;
+  }
+
+  const status = Object.entries(CLICKHOUSE_SNAPSHOT_STATUS).find(([, value]) => value === row.status)?.[0];
+
+  if (!status) {
+    return null;
+  }
+
+  return {
+    ...row,
+    status: SNAPSHOT_STATUS[status as keyof typeof SNAPSHOT_STATUS],
+    mimeType: row.mimeType || null,
+    objectKey: row.objectKey || null,
+    hasImage: row.status === CLICKHOUSE_SNAPSHOT_STATUS.ready && Boolean(row.objectKey),
+    updatedAt: row.createdAt,
+  };
 }
 
 function getSnapshotImageUrl(websiteId: string, snapshotId: string) {
@@ -231,6 +325,65 @@ export function shouldSkipSnapshot(urlPath: string) {
 }
 
 async function upsertSnapshotRecord({
+  id,
+  websiteId,
+  urlPath,
+  viewportW,
+  viewportH,
+  pageW,
+  pageH,
+  status,
+  mimeType,
+  imageData,
+  objectKey,
+  error,
+}: {
+  id: string;
+  websiteId: string;
+  urlPath: string;
+  viewportW: number;
+  viewportH: number;
+  pageW: number;
+  pageH: number;
+  status: HeatmapSnapshotStatus;
+  mimeType: string | null;
+  imageData: Buffer | null;
+  objectKey?: string | null;
+  error: string | null;
+}) {
+  if (clickhouse.enabled) {
+    return insertClickhouseSnapshotRecord({
+      id,
+      websiteId,
+      urlPath,
+      viewportW,
+      viewportH,
+      pageW,
+      pageH,
+      status,
+      mimeType,
+      objectKey: objectKey ?? null,
+      imageSize: imageData?.byteLength ?? null,
+      error,
+    });
+  }
+
+  return upsertRelationalSnapshotRecord({
+    id,
+    websiteId,
+    urlPath,
+    viewportW,
+    viewportH,
+    pageW,
+    pageH,
+    status,
+    mimeType,
+    imageData,
+    error,
+  });
+}
+
+async function upsertRelationalSnapshotRecord({
   id,
   websiteId,
   urlPath,
@@ -315,6 +468,56 @@ async function upsertSnapshotRecord({
       error,
     },
   );
+}
+
+async function insertClickhouseSnapshotRecord({
+  id,
+  websiteId,
+  urlPath,
+  viewportW,
+  viewportH,
+  pageW,
+  pageH,
+  status,
+  mimeType,
+  objectKey,
+  imageSize,
+  error,
+}: {
+  id: string;
+  websiteId: string;
+  urlPath: string;
+  viewportW: number;
+  viewportH: number;
+  pageW: number;
+  pageH: number;
+  status: HeatmapSnapshotStatus;
+  mimeType: string | null;
+  objectKey: string | null;
+  imageSize: number | null;
+  error: string | null;
+}) {
+  return clickhouse.insert('heatmap_snapshot', [
+    {
+      snapshot_id: id,
+      website_id: websiteId,
+      url_path: urlPath,
+      viewport_w: viewportW,
+      viewport_h: viewportH,
+      page_w: pageW,
+      page_h: pageH,
+      status: CLICKHOUSE_SNAPSHOT_STATUS[status],
+      mime_type: mimeType || '',
+      object_key: objectKey || '',
+      image_size: imageSize,
+      error,
+      created_at: clickhouse.getUTCString(),
+    },
+  ]);
+}
+
+function getSnapshotObjectKey(websiteId: string, snapshotId: string, viewportW: number, viewportH: number) {
+  return `heatmaps/${websiteId}/${viewportW}x${viewportH}/${snapshotId}.png`;
 }
 
 async function captureSnapshot(
@@ -456,6 +659,14 @@ export async function ensureHeatmapSnapshot({
 
   try {
     const capture = await captureSnapshot(captureUrl, viewportW, viewportH, pageW);
+    const objectKey =
+      clickhouse.enabled
+        ? getSnapshotObjectKey(websiteId, snapshotId, viewportW, viewportH)
+        : null;
+
+    if (objectKey) {
+      await putHeatmapSnapshot(objectKey, capture.imageData, capture.mimeType);
+    }
 
     await upsertSnapshotRecord({
       id: snapshotId,
@@ -467,7 +678,8 @@ export async function ensureHeatmapSnapshot({
       pageH: capture.pageH,
       status: SNAPSHOT_STATUS.ready,
       mimeType: capture.mimeType,
-      imageData: capture.imageData,
+      imageData: clickhouse.enabled ? null : capture.imageData,
+      objectKey,
       error: null,
     });
   } catch (error) {
@@ -495,6 +707,39 @@ export async function getHeatmapSnapshotImage(
   websiteId: string,
   snapshotId: string,
 ): Promise<{ mimeType: string; imageData: Buffer } | null> {
+  if (clickhouse.enabled) {
+    const rows = await clickhouse.rawQuery<
+      { mimeType: string; objectKey: string }[]
+    >(
+      `
+      select
+        mime_type as mimeType,
+        object_key as objectKey
+      from heatmap_snapshot
+      where snapshot_id = {snapshotId:UUID}
+        and website_id = {websiteId:UUID}
+        and status = {status:UInt8}
+        and object_key != ''
+      order by created_at desc
+      limit 1
+      `,
+      {
+        websiteId,
+        snapshotId,
+        status: CLICKHOUSE_SNAPSHOT_STATUS.ready,
+      },
+      'getHeatmapSnapshotImage',
+    );
+
+    const row = rows?.[0];
+
+    if (!row?.objectKey) {
+      return null;
+    }
+
+    return getHeatmapSnapshot(row.objectKey);
+  }
+
   const rows = await prisma.rawQuery(
     `
     select

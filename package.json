@@ -53,6 +53,7 @@
     ".next/cache"
   ],
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.924.0",
     "@clickhouse/client": "^1.18.5",
     "@date-fns/utc": "^2.1.1",
     "@dicebear/collection": "^9.4.2",
