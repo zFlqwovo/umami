@@ -1,5 +1,5 @@
 ARG NODE_IMAGE_VERSION="22-alpine"
-ARG PNPM_VERSION="10.23.0"
+ARG PNPM_VERSION="10.15.1"
 
 # Install dependencies only when needed
 FROM node:${NODE_IMAGE_VERSION} AS deps

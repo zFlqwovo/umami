@@ -1,10 +1,13 @@
 packages:
   - '**'
 ignoredBuiltDependencies:
+  - '@parcel/watcher'
   - cypress
-  - esbuild
-  - sharp
 onlyBuiltDependencies:
   - '@prisma/client'
   - '@prisma/engines'
+  - '@swc/core'
+  - esbuild
   - prisma
+  - sharp
+  - unrs-resolver
