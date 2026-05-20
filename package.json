@@ -9,21 +9,6 @@
     "type": "git",
     "url": "https://github.com/umami-software/umami.git"
   },
-  "pnpm": {
-    "ignoredBuiltDependencies": [
-      "@parcel/watcher",
-      "cypress"
-    ],
-    "onlyBuiltDependencies": [
-      "@prisma/client",
-      "@prisma/engines",
-      "@swc/core",
-      "esbuild",
-      "prisma",
-      "sharp",
-      "unrs-resolver"
-    ]
-  },
   "type": "module",
   "scripts": {
     "dev": "dotenv next dev --turbo",
