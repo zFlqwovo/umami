@@ -39,10 +39,14 @@ ENV NODE_OPTIONS=$NODE_OPTIONS
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 RUN set -x \
-    && apk add --no-cache curl
+    && apk add --no-cache curl \
+    && npm install -g pnpm@${PNPM_VERSION}
+
+# Keep the repo's pnpm build-script policy available in this stage.
+COPY pnpm-workspace.yaml ./
 
 # Script dependencies
-RUN npm install --no-save npm-run-all dotenv chalk semver \
+RUN pnpm --allow-build='@prisma/engines,prisma' add npm-run-all dotenv chalk semver \
     prisma@${PRISMA_VERSION} \
     @prisma/client@${PRISMA_VERSION} \
     @prisma/adapter-pg@${PRISMA_VERSION}
