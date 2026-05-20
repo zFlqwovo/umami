@@ -8,9 +8,7 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN npm install -g pnpm@${PNPM_VERSION}
-RUN pnpm install --frozen-lockfile \
-    --config.strictDepBuilds=false \
-    --allow-build='@prisma/engines,@swc/core,esbuild,prisma,sharp,unrs-resolver'
+RUN pnpm install --frozen-lockfile --config.strictDepBuilds=false
 
 # Rebuild the source code only when needed
 FROM node:${NODE_IMAGE_VERSION} AS builder
