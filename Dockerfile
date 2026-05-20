@@ -29,7 +29,6 @@ RUN npm run build-docker
 FROM node:${NODE_IMAGE_VERSION} AS runner
 WORKDIR /app
 
-ARG PRISMA_VERSION="7.7.0"
 ARG NODE_OPTIONS
 
 ENV NODE_ENV=production
@@ -39,17 +38,7 @@ ENV NODE_OPTIONS=$NODE_OPTIONS
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 RUN set -x \
-    && apk add --no-cache curl \
-    && npm install -g pnpm@${PNPM_VERSION}
-
-# Keep the repo's pnpm build-script policy available in this stage.
-COPY pnpm-workspace.yaml ./
-
-# Script dependencies
-RUN pnpm --allow-build='@prisma/engines,prisma' add npm-run-all dotenv chalk semver \
-    prisma@${PRISMA_VERSION} \
-    @prisma/client@${PRISMA_VERSION} \
-    @prisma/adapter-pg@${PRISMA_VERSION}
+    && apk add --no-cache curl
 
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder /app/prisma ./prisma
@@ -61,6 +50,8 @@ COPY --from=builder /app/generated ./generated
 # https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+RUN rm -rf /app/node_modules
+COPY --from=deps /app/node_modules ./node_modules
 
 USER nextjs
 
