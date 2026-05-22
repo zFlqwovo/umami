@@ -1,7 +1,7 @@
 import clickhouse from '@/lib/clickhouse';
 import prisma from '@/lib/prisma';
 import { uuid } from '@/lib/crypto';
-import { getHeatmapSnapshot, putHeatmapSnapshot } from '@/lib/heatmap-s3';
+import { getHeatmapSnapshot, putHeatmapSnapshot } from '@/lib/heatmap-r2';
 import { getWebsite } from '@/queries/prisma';
 
 const SNAPSHOT_STATUS = {
@@ -12,6 +12,7 @@ const SNAPSHOT_STATUS = {
 
 const SNAPSHOT_RETRY_DELAY_MS = 15 * 60 * 1000;
 const SNAPSHOT_PENDING_WINDOW_MS = 30 * 1000;
+const SNAPSHOT_DEVICE_SCALE_FACTOR = 1;
 export type HeatmapSnapshotStatus = (typeof SNAPSHOT_STATUS)[keyof typeof SNAPSHOT_STATUS];
 
 export interface HeatmapSnapshotImage {
@@ -70,6 +71,19 @@ async function measurePage(page: any) {
     const doc = document.documentElement;
     const body = document.body;
     const root = document.scrollingElement || doc || body;
+    const rootClientWidth = root?.clientWidth || 0;
+    const docClientWidth = doc?.clientWidth || 0;
+    const bodyClientWidth = body?.clientWidth || 0;
+    const visibleWidth = Math.max(window.innerWidth, rootClientWidth, docClientWidth, bodyClientWidth);
+    const rootScrollWidth = root?.scrollWidth || 0;
+    const docScrollWidth = doc?.scrollWidth || 0;
+    const bodyScrollWidth = body?.scrollWidth || 0;
+    const horizontalOverflow = Math.max(
+      rootScrollWidth - rootClientWidth,
+      docScrollWidth - docClientWidth,
+      bodyScrollWidth - bodyClientWidth,
+      0,
+    );
     let maxRight = 0;
     let maxBottom = 0;
 
@@ -89,13 +103,10 @@ async function measurePage(page: any) {
       }
     }
 
-    const pageW = Math.max(
-      window.innerWidth,
-      root?.scrollWidth || 0,
-      doc?.scrollWidth || 0,
-      body?.scrollWidth || 0,
-      Math.ceil(maxRight),
-    );
+    const pageW =
+      horizontalOverflow > 24
+        ? Math.max(visibleWidth, rootScrollWidth, docScrollWidth, bodyScrollWidth)
+        : visibleWidth;
     const pageH = Math.max(
       window.innerHeight,
       root?.scrollHeight || 0,
@@ -108,6 +119,38 @@ async function measurePage(page: any) {
       pageW: Math.ceil(pageW),
       pageH: Math.ceil(pageH),
     };
+  });
+}
+
+async function warmLazyContent(page: any) {
+  await page.evaluate(async () => {
+    const root = document.scrollingElement || document.documentElement;
+
+    if (!root) {
+      return;
+    }
+
+    const maxScrollTop = Math.max(0, root.scrollHeight - window.innerHeight);
+
+    if (maxScrollTop <= 0) {
+      return;
+    }
+
+    const targets = [
+      Math.min(window.innerHeight, maxScrollTop),
+      Math.min(Math.round(maxScrollTop * 0.25), maxScrollTop),
+      Math.min(Math.round(maxScrollTop * 0.5), maxScrollTop),
+      Math.min(Math.round(maxScrollTop * 0.75), maxScrollTop),
+      maxScrollTop,
+    ].filter((value, index, values) => value > 0 && values.indexOf(value) === index);
+
+    for (const top of targets) {
+      window.scrollTo(0, top);
+      await new Promise(resolve => window.setTimeout(resolve, 350));
+    }
+
+    window.scrollTo(0, 0);
+    await new Promise(resolve => window.setTimeout(resolve, 250));
   });
 }
 
@@ -517,7 +560,7 @@ async function insertClickhouseSnapshotRecord({
 }
 
 function getSnapshotObjectKey(websiteId: string, snapshotId: string, viewportW: number, viewportH: number) {
-  return `heatmaps/${websiteId}/${viewportW}x${viewportH}/${snapshotId}.png`;
+  return `${websiteId}/${viewportW}x${viewportH}/${snapshotId}.png`;
 }
 
 async function captureSnapshot(
@@ -528,13 +571,13 @@ async function captureSnapshot(
 ): Promise<CaptureResult> {
   const { chromium } = await import('@playwright/test');
   const browser = await chromium.launch({ headless: true });
-  const initialViewportW = Math.max(viewportW, pageW || 0);
+  const initialViewportW = viewportW;
 
   try {
     const context = await browser.newContext({
       viewport: { width: initialViewportW, height: viewportH },
       screen: { width: initialViewportW, height: viewportH },
-      deviceScaleFactor: 1,
+      deviceScaleFactor: SNAPSHOT_DEVICE_SCALE_FACTOR,
       ignoreHTTPSErrors: true,
     });
 
@@ -542,10 +585,14 @@ async function captureSnapshot(
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
     await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => undefined);
     await page.waitForTimeout(500);
+    await warmLazyContent(page);
+    await page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => undefined);
+    await page.waitForTimeout(300);
 
     let dimensions = await measurePage(page);
     let currentWidth = initialViewportW;
-    let captureWidth = Math.max(initialViewportW, dimensions.pageW);
+    let captureWidth =
+      dimensions.pageW > initialViewportW + 24 ? Math.max(initialViewportW, dimensions.pageW) : initialViewportW;
 
     for (let i = 0; i < 3; i++) {
       if (captureWidth <= currentWidth) {

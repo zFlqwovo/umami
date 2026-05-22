@@ -265,6 +265,8 @@ function ClickHeatmapView({
   const maxPointY = visible.reduce((max, point) => Math.max(max, point.pageY), 0);
   const baseWidth = Math.max(snapshot?.pageW ?? 0, viewport?.pageW ?? 0, maxPointX + overlayGutter, 1200);
   const baseHeight = Math.max(snapshot?.pageH ?? 0, viewport?.pageH ?? 0, maxPointY + overlayGutter, 640);
+  const overlayPageW = snapshot?.pageW ?? viewport?.pageW ?? baseWidth;
+  const overlayPageH = snapshot?.pageH ?? viewport?.pageH ?? baseHeight;
   const showSnapshot = baseWidth > 0 && showPage && hasSnapshotImage;
   const showOverlay = !showSnapshot || snapshotReady;
   const totalClicks = visible.reduce((sum, point) => sum + point.count, 0);
@@ -325,8 +327,8 @@ function ClickHeatmapView({
               {visible.map((point, index) => {
                 const intensity = Math.min(1, point.count / maxCount);
                 const desiredSize = 24 + intensity * 36;
-                const pointWidth = Math.max(baseWidth, point.pageW || 0, point.pageX);
-                const pointHeight = Math.max(baseHeight, point.pageH || 0, point.pageY);
+                const pointWidth = Math.max(overlayPageW, point.pageX);
+                const pointHeight = Math.max(overlayPageH, point.pageY);
                 const rawCenterX = (point.pageX / Math.max(1, pointWidth)) * 100;
                 const rawCenterY = (point.pageY / Math.max(1, pointHeight)) * 100;
                 const size = desiredSize;
