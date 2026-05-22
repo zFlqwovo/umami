@@ -11,7 +11,13 @@ allowBuilds:
 ignoredBuiltDependencies:
   - esbuild
   - sharp
+  - '@parcel/watcher'
+  - cypress
 onlyBuiltDependencies:
   - '@prisma/client'
   - '@prisma/engines'
+  - '@swc/core'
+  - esbuild
   - prisma
+  - sharp
+  - unrs-resolver
