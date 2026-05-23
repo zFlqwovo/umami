@@ -1,13 +1,6 @@
 import { parseRequest } from '@/lib/request';
-import { json } from '@/lib/response';
+import { getRecorderConfig } from '@/lib/recorder';
 import { getWebsite } from '@/queries/prisma';
-
-interface ReplayConfig {
-  sampleRate?: number;
-  maskLevel?: string;
-  maxDuration?: number;
-  blockSelector?: string;
-}
 
 export async function GET(
   request: Request,
@@ -26,16 +19,19 @@ export async function GET(
     'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
   };
 
-  if (!website || !website.replayEnabled) {
+  if (!website || !website.recorderEnabled) {
     return Response.json({ enabled: false }, { headers });
   }
 
-  const config = (website.replayConfig as ReplayConfig) || {};
+  const config = getRecorderConfig(website.replayConfig);
 
   return Response.json(
     {
       enabled: true,
+      replayEnabled: config.replayEnabled === true,
+      heatmapEnabled: config.heatmapEnabled === true,
       sampleRate: config.sampleRate ?? 0.15,
+      heatmapSampleRate: config.heatmapSampleRate ?? 0.15,
       maskLevel: config.maskLevel ?? 'moderate',
       maxDuration: config.maxDuration ?? 300000,
       blockSelector: config.blockSelector ?? '',

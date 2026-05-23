@@ -1,4 +1,5 @@
 ARG NODE_IMAGE_VERSION="22-alpine"
+ARG PNPM_VERSION="10.15.1"
 
 # Install dependencies only when needed
 FROM node:${NODE_IMAGE_VERSION} AS deps
@@ -33,7 +34,6 @@ RUN npm run build-docker
 FROM node:${NODE_IMAGE_VERSION} AS runner
 WORKDIR /app
 
-ARG PRISMA_VERSION="7.3.0"
 ARG NODE_OPTIONS
 
 ENV NODE_ENV=production
@@ -71,6 +71,8 @@ COPY --from=builder /app/generated ./generated
 # https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+RUN rm -rf /app/node_modules
+COPY --from=deps /app/node_modules ./node_modules
 
 USER nextjs
 
@@ -79,4 +81,4 @@ EXPOSE 3000
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 
-CMD ["pnpm", "start-docker"]
+CMD ["npm", "run", "start-docker"]
