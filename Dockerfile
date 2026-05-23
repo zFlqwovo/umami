@@ -6,9 +6,14 @@ FROM node:${NODE_IMAGE_VERSION} AS deps
 # Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN npm install -g pnpm@${PNPM_VERSION}
-RUN pnpm install --frozen-lockfile --config.strictDepBuilds=false
+COPY package.json pnpm-lock.yaml ./
+RUN npm install -g pnpm
+
+RUN cat > pnpm-workspace.yaml << EOF
+strictDepBuilds: false
+EOF
+
+RUN pnpm install --frozen-lockfile
 
 # Rebuild the source code only when needed
 FROM node:${NODE_IMAGE_VERSION} AS builder
@@ -38,7 +43,23 @@ ENV NODE_OPTIONS=$NODE_OPTIONS
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 RUN set -x \
-    && apk add --no-cache curl
+    && apk add --no-cache curl \
+    && npm install -g pnpm
+
+RUN echo {} > package.json
+
+RUN cat > pnpm-workspace.yaml << EOF
+allowBuilds:
+  '@prisma/engines': true
+  prisma: false
+verifyDepsBeforeRun: false
+EOF
+
+# Script dependencies
+RUN pnpm add npm-run-all dotenv chalk semver \
+    prisma@${PRISMA_VERSION} \
+    @prisma/client@${PRISMA_VERSION} \
+    @prisma/adapter-pg@${PRISMA_VERSION}
 
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder /app/prisma ./prisma
