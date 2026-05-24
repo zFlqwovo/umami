@@ -177,6 +177,8 @@
         body: JSON.stringify({ type, payload }),
         headers: {
           'Content-Type': 'application/json',
+          'x-umami-website-id': website,
+          'x-umami-hostname': hostname,
           ...(typeof cache !== 'undefined' && { 'x-umami-cache': cache }),
         },
         credentials,
