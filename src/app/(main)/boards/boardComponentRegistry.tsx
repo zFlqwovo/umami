@@ -119,7 +119,7 @@ const componentDefinitions: ComponentDefinition[] = [
   },
   {
     type: 'WebsiteChart',
-    name: 'Website chart',
+    name: 'Visitors chart',
     description: 'Page views and visitors over time',
     category: 'overview',
     icon: ChartColumnBig,
