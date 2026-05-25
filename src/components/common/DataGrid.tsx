@@ -97,7 +97,9 @@ export function DataGrid({
         <Icon>{displayMode === 'cards' ? <Table2 /> : <LayoutGrid />}</Icon>
       </Button>
       <Tooltip>
-        <Text>{displayMode === 'cards' ? 'Switch to table view' : 'Switch to card view'}</Text>
+        <Text>
+          {displayMode === 'cards' ? t(labels.switchToTableView) : t(labels.switchToCardView)}
+        </Text>
       </Tooltip>
     </TooltipTrigger>
   );
