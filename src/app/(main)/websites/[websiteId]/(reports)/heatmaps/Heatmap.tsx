@@ -5,6 +5,7 @@ import { LoadingPanel } from '@/components/common/LoadingPanel';
 import { useResultQuery } from '@/components/hooks';
 import { getClientAuthToken } from '@/lib/client';
 import { formatLongNumber } from '@/lib/format';
+import { SNAPSHOT_UNAVAILABLE_ERROR } from '@/queries/sql/heatmap/ensureHeatmapSnapshot';
 import type { HeatmapMode, HeatmapPoint, HeatmapResult, HeatmapSnapshot } from '@/queries/sql';
 import styles from './Heatmap.module.css';
 
@@ -299,7 +300,7 @@ function ClickHeatmapView({
 
       {showPage && snapshot?.status === 'failed' && (
         <Text color="muted" className={styles.snapshotMessage}>
-          {snapshot.error || 'Page screenshot unavailable.'}
+          {SNAPSHOT_UNAVAILABLE_ERROR}
         </Text>
       )}
 
@@ -447,7 +448,7 @@ function ScrollHeatmapView({
 
       {showPage && snapshot?.status === 'failed' && (
         <Text color="muted" className={styles.snapshotMessage}>
-          {snapshot.error || 'Page screenshot unavailable.'}
+          {SNAPSHOT_UNAVAILABLE_ERROR}
         </Text>
       )}
 

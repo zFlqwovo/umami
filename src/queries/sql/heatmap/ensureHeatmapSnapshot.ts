@@ -13,6 +13,7 @@ const SNAPSHOT_STATUS = {
 const SNAPSHOT_RETRY_DELAY_MS = 15 * 60 * 1000;
 const SNAPSHOT_PENDING_WINDOW_MS = 30 * 1000;
 const SNAPSHOT_DEVICE_SCALE_FACTOR = 1;
+export const SNAPSHOT_UNAVAILABLE_ERROR = 'Page screenshot unavailable.';
 export type HeatmapSnapshotStatus = (typeof SNAPSHOT_STATUS)[keyof typeof SNAPSHOT_STATUS];
 
 export interface HeatmapSnapshotImage {
@@ -682,7 +683,7 @@ export async function ensureHeatmapSnapshot({
       status: SNAPSHOT_STATUS.failed,
       mimeType: null,
       imageData: null,
-      error: 'Website domain is not configured for screenshot capture.',
+      error: SNAPSHOT_UNAVAILABLE_ERROR,
     });
 
     const failed = await findSnapshot(websiteId, urlPath, viewportW, viewportH);
@@ -741,7 +742,7 @@ export async function ensureHeatmapSnapshot({
       status: SNAPSHOT_STATUS.failed,
       mimeType: null,
       imageData: null,
-      error: error instanceof Error ? error.message.slice(0, 500) : 'Screenshot capture failed.',
+      error: SNAPSHOT_UNAVAILABLE_ERROR,
     });
   }
 
