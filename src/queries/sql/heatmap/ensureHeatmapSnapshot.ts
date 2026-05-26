@@ -13,7 +13,7 @@ const SNAPSHOT_STATUS = {
 const SNAPSHOT_RETRY_DELAY_MS = 15 * 60 * 1000;
 const SNAPSHOT_PENDING_WINDOW_MS = 30 * 1000;
 const SNAPSHOT_DEVICE_SCALE_FACTOR = 1;
-export const SNAPSHOT_UNAVAILABLE_ERROR = 'Page screenshot unavailable.';
+const SNAPSHOT_UNAVAILABLE_ERROR = 'Page screenshot unavailable.';
 export type HeatmapSnapshotStatus = (typeof SNAPSHOT_STATUS)[keyof typeof SNAPSHOT_STATUS];
 
 export interface HeatmapSnapshotImage {
