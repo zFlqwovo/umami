@@ -12,20 +12,14 @@ import { record } from 'rrweb';
 
   const website = config('website-id');
   const hostUrl = config('host-url');
-  const configHostUrl = config('config-host-url');
 
   if (!website) return;
 
-  const scriptHost = currentScript.src.split('/').slice(0, -1).join('/');
-  const collectHost = hostUrl || '__COLLECT_API_HOST__' || scriptHost;
-  const configHost = configHostUrl || scriptHost || collectHost;
-  const collectHostBase = collectHost.replace(/\/$/, '');
-  const configHostBase = configHost.replace(/\/$/, '');
-  const endpoint = `${collectHostBase}__COLLECT_REPLAY_ENDPOINT__`;
-  const configEndpoint = `${configHostBase}__RECORDER_CONFIG_ENDPOINT__`.replace(
-    '{websiteId}',
-    website,
-  );
+  const host =
+    hostUrl || '__COLLECT_API_HOST__' || currentScript.src.split('/').slice(0, -1).join('/');
+  const hostBase = host.replace(/\/$/, '');
+  const endpoint = `${hostBase}__COLLECT_REPLAY_ENDPOINT__`;
+  const configEndpoint = `${hostBase}__RECORDER_CONFIG_ENDPOINT__`.replace('{websiteId}', website);
 
   const REPLAY_FLUSH_EVENT_COUNT = 100;
   const REPLAY_FLUSH_INTERVAL = 10000;
@@ -342,7 +336,12 @@ import { record } from 'rrweb';
     const onClick = event => {
       if (!event.isTrusted || event.button !== 0) return;
 
-      const { pageW: rawPageW, pageH: rawPageH, scrollLeft, scrollTop } = computePageMetrics({
+      const {
+        pageW: rawPageW,
+        pageH: rawPageH,
+        scrollLeft,
+        scrollTop,
+      } = computePageMetrics({
         includeBounds: true,
       });
       const pageX = Number.isFinite(event.pageX) ? event.pageX : event.clientX + scrollLeft;
