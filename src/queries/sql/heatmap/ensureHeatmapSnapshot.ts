@@ -564,17 +564,27 @@ function getSnapshotObjectKey(websiteId: string, snapshotId: string, viewportW: 
   return `${websiteId}/${viewportW}x${viewportH}/${snapshotId}.png`;
 }
 
+async function createSnapshotBrowser() {
+  const { chromium } = await import('@playwright/test');
+  const endpoint = process.env.PLAYWRIGHT_URL?.trim();
+
+  if (endpoint) {
+    return chromium.connect(endpoint);
+  }
+
+  return chromium.launch({
+    channel: 'chromium',
+    headless: true,
+  });
+}
+
 async function captureSnapshot(
   url: string,
   viewportW: number,
   viewportH: number,
   pageW?: number,
 ): Promise<CaptureResult> {
-  const { chromium } = await import('@playwright/test');
-  const browser = await chromium.launch({
-    channel: 'chromium',
-    headless: true,
-  });
+  const browser = await createSnapshotBrowser();
   const initialViewportW = viewportW;
 
   try {
