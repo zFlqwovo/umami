@@ -10,6 +10,7 @@ import styles from './Heatmap.module.css';
 
 const CLICK_EDGE_PERCENT = 1.5;
 const SCROLL_BUCKET_SIZE = 10;
+const SNAPSHOT_UNAVAILABLE_ERROR = 'Page screenshot unavailable.';
 
 interface ViewportBucket {
   width: number;
@@ -299,7 +300,7 @@ function ClickHeatmapView({
 
       {showPage && snapshot?.status === 'failed' && (
         <Text color="muted" className={styles.snapshotMessage}>
-          {snapshot.error || 'Page screenshot unavailable.'}
+          {SNAPSHOT_UNAVAILABLE_ERROR}
         </Text>
       )}
 
@@ -447,7 +448,7 @@ function ScrollHeatmapView({
 
       {showPage && snapshot?.status === 'failed' && (
         <Text color="muted" className={styles.snapshotMessage}>
-          {snapshot.error || 'Page screenshot unavailable.'}
+          {SNAPSHOT_UNAVAILABLE_ERROR}
         </Text>
       )}
 
