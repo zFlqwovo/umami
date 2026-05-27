@@ -571,7 +571,10 @@ async function captureSnapshot(
   pageW?: number,
 ): Promise<CaptureResult> {
   const { chromium } = await import('@playwright/test');
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    channel: 'chromium',
+    headless: true,
+  });
   const initialViewportW = viewportW;
 
   try {

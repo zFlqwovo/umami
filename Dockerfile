@@ -48,7 +48,7 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 RUN set -x \
-    && apk add --no-cache curl \
+    && apk add --no-cache curl libc6-compat \
     && npm install -g pnpm
 
 RUN echo {} > package.json
