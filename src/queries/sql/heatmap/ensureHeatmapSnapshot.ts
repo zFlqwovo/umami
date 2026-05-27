@@ -578,6 +578,13 @@ function getSnapshotErrorMessage(error: unknown) {
 }
 
 async function createSnapshotBrowser() {
+  const endpoint = process.env.PLAYWRIGHT_URL?.trim();
+
+  if (endpoint) {
+    const { chromium } = await import('playwright-core');
+    return chromium.connect(endpoint);
+  }
+
   const { chromium } = await import('@playwright/test');
   return chromium.launch({
     channel: 'chromium',
