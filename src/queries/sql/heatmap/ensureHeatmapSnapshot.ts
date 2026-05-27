@@ -1,3 +1,4 @@
+import { serializeError } from 'serialize-error';
 import clickhouse from '@/lib/clickhouse';
 import prisma from '@/lib/prisma';
 import { uuid } from '@/lib/crypto';
@@ -14,6 +15,7 @@ const SNAPSHOT_RETRY_DELAY_MS = 15 * 60 * 1000;
 const SNAPSHOT_PENDING_WINDOW_MS = 30 * 1000;
 const SNAPSHOT_DEVICE_SCALE_FACTOR = 1;
 const SNAPSHOT_UNAVAILABLE_ERROR = 'Page screenshot unavailable.';
+const SNAPSHOT_ERROR_MAX_LENGTH = 500;
 export type HeatmapSnapshotStatus = (typeof SNAPSHOT_STATUS)[keyof typeof SNAPSHOT_STATUS];
 
 export interface HeatmapSnapshotImage {
@@ -564,6 +566,17 @@ function getSnapshotObjectKey(websiteId: string, snapshotId: string, viewportW: 
   return `${websiteId}/${viewportW}x${viewportH}/${snapshotId}.png`;
 }
 
+function getSnapshotErrorMessage(error: unknown) {
+  const message =
+    error instanceof Error
+      ? [error.name, error.message].filter(Boolean).join(': ')
+      : typeof error === 'string'
+        ? error
+        : SNAPSHOT_UNAVAILABLE_ERROR;
+
+  return message.slice(0, SNAPSHOT_ERROR_MAX_LENGTH) || SNAPSHOT_UNAVAILABLE_ERROR;
+}
+
 async function createSnapshotBrowser() {
   const { chromium } = await import('@playwright/test');
   const endpoint = process.env.PLAYWRIGHT_URL?.trim();
@@ -744,6 +757,17 @@ export async function ensureHeatmapSnapshot({
       error: null,
     });
   } catch (error) {
+    console.error('Heatmap snapshot capture failed', {
+      captureUrl,
+      websiteId,
+      urlPath,
+      viewportW,
+      viewportH,
+      pageW,
+      pageH,
+      error: serializeError(error),
+    });
+
     await upsertSnapshotRecord({
       id: snapshotId,
       websiteId,
@@ -755,7 +779,7 @@ export async function ensureHeatmapSnapshot({
       status: SNAPSHOT_STATUS.failed,
       mimeType: null,
       imageData: null,
-      error: SNAPSHOT_UNAVAILABLE_ERROR,
+      error: getSnapshotErrorMessage(error),
     });
   }
 
