@@ -223,7 +223,6 @@ if (isProd && cloudMode) {
 /** @type {import('next').NextConfig} */
 export default withNextIntl({
   reactStrictMode: false,
-  serverExternalPackages: ['playwright-core'],
   env: {
     apiUrl,
     basePath,
