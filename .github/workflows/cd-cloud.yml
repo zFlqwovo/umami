@@ -23,7 +23,7 @@ jobs:
         with:
           image: umamisoftware/umami
           tags: cloud-${{ steps.random_hash.outputs.hash }}, cloud-latest
-          buildArgs: DATABASE_TYPE=postgresql
+          buildArgs: DATABASE_TYPE=postgresql,INSTALL_HEATMAP=true
           registry: docker.io
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
