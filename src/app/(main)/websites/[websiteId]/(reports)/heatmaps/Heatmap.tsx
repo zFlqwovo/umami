@@ -146,6 +146,12 @@ function PageList({
   mode: HeatmapMode;
   hasSearch: boolean;
 }) {
+  const getPageMetricTitle = (page: HeatmapResult['pages'][number]) => {
+    const metricLabel = mode === 'scroll' ? 'scroll events' : 'clicks';
+
+    return `${formatLongNumber(page.sessions)} visitors - ${formatLongNumber(page.count)} ${metricLabel}`;
+  };
+
   return (
     <Column className={styles.pageList} gap="1">
       <Heading size="lg">Pages</Heading>
@@ -161,8 +167,8 @@ function PageList({
           >
             <Row alignItems="center" justifyContent="space-between" gap="2">
               <Text truncate>{page.urlPath}</Text>
-              <Text color="muted">
-                {formatLongNumber(mode === 'scroll' ? page.sessions : page.count)}
+              <Text color="muted" className={styles.pageMetric} title={getPageMetricTitle(page)}>
+                {formatLongNumber(page.sessions)}
               </Text>
             </Row>
           </button>
@@ -264,11 +270,15 @@ function ClickHeatmapView({
   const overlayGutter = Math.max(48, Math.round((viewport?.width ?? 1920) * 0.04));
   const maxPointX = visible.reduce((max, point) => Math.max(max, point.pageX), 0);
   const maxPointY = visible.reduce((max, point) => Math.max(max, point.pageY), 0);
-  const baseWidth = Math.max(snapshot?.pageW ?? 0, viewport?.pageW ?? 0, maxPointX + overlayGutter, 1200);
-  const baseHeight = Math.max(snapshot?.pageH ?? 0, viewport?.pageH ?? 0, maxPointY + overlayGutter, 640);
+  const baseWidth = Math.max(viewport?.pageW ?? 0, maxPointX + overlayGutter, 1);
+  const baseHeight = Math.max(viewport?.pageH ?? 0, maxPointY + overlayGutter, 640);
+  const renderWidth = snapshot?.pageW ?? baseWidth;
+  const renderHeight = snapshot?.pageH ?? baseHeight;
+  const hasMeasuredWidth = Boolean(snapshot?.pageW || viewport?.pageW || maxPointX);
+  const canvasWidth = hasMeasuredWidth ? `min(100%, ${renderWidth}px)` : '100%';
   const overlayPageW = snapshot?.pageW ?? viewport?.pageW ?? baseWidth;
   const overlayPageH = snapshot?.pageH ?? viewport?.pageH ?? baseHeight;
-  const showSnapshot = baseWidth > 0 && showPage && hasSnapshotImage;
+  const showSnapshot = renderWidth > 0 && showPage && hasSnapshotImage;
   const showOverlay = !showSnapshot || snapshotReady;
   const totalClicks = visible.reduce((sum, point) => sum + point.count, 0);
   const showLoading = isLoading;
@@ -308,9 +318,9 @@ function ClickHeatmapView({
         <div
           className={styles.canvas}
           style={{
-            width: '100%',
-            maxWidth: baseWidth || '100%',
-            aspectRatio: `${Math.max(1, baseWidth)} / ${Math.max(1, baseHeight)}`,
+            width: canvasWidth,
+            maxWidth: '100%',
+            aspectRatio: `${Math.max(1, renderWidth)} / ${Math.max(1, renderHeight)}`,
           }}
         >
           {showLoading ? (
@@ -397,9 +407,13 @@ function ScrollHeatmapView({
   }, [hasSnapshotImage, showPage, snapshot?.id]);
   const { buckets = [], totalSessions = 0, pageW = 0, pageH = 0, viewportW = 0, viewportH = 0 } =
     scroll ?? {};
-  const baseWidth = Math.max(snapshot?.pageW ?? 0, pageW, 1200);
-  const baseHeight = Math.max(snapshot?.pageH ?? 0, pageH, 640);
-  const showSnapshot = baseWidth > 0 && showPage && hasSnapshotImage;
+  const baseWidth = Math.max(pageW, 1);
+  const baseHeight = Math.max(pageH, 640);
+  const renderWidth = snapshot?.pageW ?? baseWidth;
+  const renderHeight = snapshot?.pageH ?? baseHeight;
+  const hasMeasuredWidth = Boolean(snapshot?.pageW || pageW);
+  const canvasWidth = hasMeasuredWidth ? `min(100%, ${renderWidth}px)` : '100%';
+  const showSnapshot = renderWidth > 0 && showPage && hasSnapshotImage;
   const showOverlay = !showSnapshot || snapshotReady;
   const hasScrollData = Boolean(scroll && totalSessions > 0 && pageW && pageH && viewportW);
   const showLoading = isLoading;
@@ -456,9 +470,9 @@ function ScrollHeatmapView({
         <div
           className={styles.canvas}
           style={{
-            width: '100%',
-            maxWidth: baseWidth || '100%',
-            aspectRatio: `${Math.max(1, baseWidth)} / ${Math.max(1, baseHeight)}`,
+            width: canvasWidth,
+            maxWidth: '100%',
+            aspectRatio: `${Math.max(1, renderWidth)} / ${Math.max(1, renderHeight)}`,
           }}
         >
           {showLoading ? (
@@ -484,10 +498,10 @@ function ScrollHeatmapView({
                         height: `${Math.max(0, band.toPct - band.fromPct)}%`,
                         background: intensity > 0 ? `hsla(${hue}, 90%, 55%, ${0.12 + intensity * 0.45})` : 'none',
                       }}
-                      title={`${band.toPct}% depth • ${formatLongNumber(band.reached)} sessions reached`}
+                      title={`${band.toPct}% depth - ${formatLongNumber(band.reached)} sessions reached`}
                     >
                       <span className={styles.scrollBandLabel}>
-                        {band.toPct}% depth • {Math.round(intensity * 100)}% reached
+                        {band.toPct}% depth - {Math.round(intensity * 100)}% reached
                       </span>
                     </div>
                   );
