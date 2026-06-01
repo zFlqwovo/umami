@@ -316,7 +316,10 @@ async function findClickhouseSnapshot(
 }
 
 function getSnapshotImageUrl(websiteId: string, snapshotId: string) {
-  return getApiUrl(`/websites/${websiteId}/heatmaps/snapshots/${snapshotId}`);
+  return getApiUrl(`/websites/${websiteId}/heatmaps/snapshots/${snapshotId}`, {
+    apiUrl: process.env.API_URL,
+    basePath: process.env.BASE_PATH,
+  });
 }
 
 function mapSnapshot(websiteId: string, row: SnapshotRecord): HeatmapSnapshotImage {
