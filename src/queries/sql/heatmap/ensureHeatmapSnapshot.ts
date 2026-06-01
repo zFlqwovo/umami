@@ -1,4 +1,5 @@
 import { serializeError } from 'serialize-error';
+import { getApiUrl } from '@/lib/api-url';
 import clickhouse from '@/lib/clickhouse';
 import prisma from '@/lib/prisma';
 import { uuid } from '@/lib/crypto';
@@ -315,7 +316,10 @@ async function findClickhouseSnapshot(
 }
 
 function getSnapshotImageUrl(websiteId: string, snapshotId: string) {
-  return `/api/websites/${websiteId}/heatmaps/snapshots/${snapshotId}`;
+  return getApiUrl(`/websites/${websiteId}/heatmaps/snapshots/${snapshotId}`, {
+    apiUrl: process.env.API_URL,
+    basePath: process.env.BASE_PATH,
+  });
 }
 
 function mapSnapshot(websiteId: string, row: SnapshotRecord): HeatmapSnapshotImage {
