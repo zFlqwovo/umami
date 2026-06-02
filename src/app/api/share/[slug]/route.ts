@@ -1,5 +1,5 @@
 import { getBoardEntityIds } from '@/lib/boards';
-import { ENTITY_TYPE, ROLES } from '@/lib/constants';
+import { ENTITY_TYPE, ROLES, SHARE_TOKEN_TYPE } from '@/lib/constants';
 import { secret } from '@/lib/crypto';
 import { createToken } from '@/lib/jwt';
 import prisma from '@/lib/prisma';
@@ -91,7 +91,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     return notFound();
   }
 
-  data.token = createToken(data, secret());
+  data.token = createToken({ ...data, type: SHARE_TOKEN_TYPE }, secret());
 
   const accountId = await getAccountId(entity);
 
