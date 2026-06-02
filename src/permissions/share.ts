@@ -18,6 +18,23 @@ export type ShareSection =
   | 'revenue'
   | 'attribution';
 
+const SHARE_SECTIONS: ShareSection[] = [
+  'overview',
+  'events',
+  'sessions',
+  'realtime',
+  'performance',
+  'compare',
+  'breakdown',
+  'goals',
+  'funnels',
+  'journeys',
+  'retention',
+  'utm',
+  'revenue',
+  'attribution',
+];
+
 type ShareSectionInput = ShareSection | ShareSection[];
 
 function shareTokenIncludesWebsite(auth: Auth | null | undefined, websiteId: string) {
@@ -46,6 +63,13 @@ export async function canViewWebsiteSection(
   }
 
   const sections = Array.isArray(section) ? section : [section];
+  const hasSectionParameters = SHARE_SECTIONS.some(
+    key => typeof shareToken.parameters?.[key] === 'boolean',
+  );
+
+  if (!hasSectionParameters) {
+    return true;
+  }
 
   return sections.some(key => shareToken.parameters?.[key] === true);
 }
