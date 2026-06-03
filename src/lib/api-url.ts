@@ -39,12 +39,8 @@ export function getApiUrl(url: string, options: ApiUrlOptions = {}) {
   }
 
   const { apiUrl = process.env.apiUrl || '', basePath = process.env.basePath || '' } = options;
-  const useApiUrl = apiUrl && !isAppRoute(url);
-  const baseUrl = useApiUrl
-    ? isAbsoluteUrl(apiUrl)
-      ? apiUrl
-      : joinPath(basePath, apiUrl)
-    : joinPath(basePath, '/api');
+  const useApiUrl = apiUrl && !isAbsoluteUrl(apiUrl) && !isAppRoute(url);
+  const baseUrl = useApiUrl ? joinPath(basePath, apiUrl) : joinPath(basePath, '/api');
 
   return joinPath(baseUrl, url);
 }
