@@ -5,8 +5,8 @@ import { filtersObjectToArray } from '@/lib/params';
 import prisma from '@/lib/prisma';
 import type { QueryFilters } from '@/lib/types';
 import {
-  type HeatmapSnapshotImage,
   ensureHeatmapSnapshot,
+  type HeatmapSnapshotImage,
   shouldSkipSnapshot,
 } from './ensureHeatmapSnapshot';
 
@@ -543,15 +543,13 @@ function pickSnapshotViewport(
     }
   }
 
-  let bestViewport:
-    | {
-        width: number;
-        height: number;
-        count: number;
-        maxPageW: number;
-        maxPageH: number;
-      }
-    | null = null;
+  let bestViewport: {
+    width: number;
+    height: number;
+    count: number;
+    maxPageW: number;
+    maxPageH: number;
+  } | null = null;
 
   for (const bucket of viewportBuckets.values()) {
     if (!bestViewport || bucket.count > bestViewport.count) {
@@ -626,7 +624,9 @@ function getRelationalHeatmapPathFilterContext(filters: QueryFilters) {
   );
 
   const joinedClauses =
-    filters.match === 'any' ? clauses.filter(Boolean).join('\n        or ') : clauses.filter(Boolean).join('\n      and ');
+    filters.match === 'any'
+      ? clauses.filter(Boolean).join('\n        or ')
+      : clauses.filter(Boolean).join('\n      and ');
 
   return {
     filterQuery:
@@ -680,7 +680,9 @@ function getClickhouseHeatmapPathFilterContext(filters: QueryFilters) {
   );
 
   const joinedClauses =
-    filters.match === 'any' ? clauses.filter(Boolean).join('\n        or ') : clauses.filter(Boolean).join('\n      and ');
+    filters.match === 'any'
+      ? clauses.filter(Boolean).join('\n        or ')
+      : clauses.filter(Boolean).join('\n      and ');
 
   return {
     filterQuery:

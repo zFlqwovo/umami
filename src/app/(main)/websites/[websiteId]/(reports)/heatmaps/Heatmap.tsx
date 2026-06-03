@@ -298,7 +298,12 @@ function ClickHeatmapView({
             </Text>
           </Row>
         ) : (
-          <Row alignItems="center" justifyContent="space-between" gap className={styles.summaryStats}>
+          <Row
+            alignItems="center"
+            justifyContent="space-between"
+            gap
+            className={styles.summaryStats}
+          >
             <Text color="muted" className={styles.summaryStat}>
               {viewport
                 ? `${visible.length} positions - ${formatLongNumber(totalClicks)} clicks - viewport ${viewport.width}x${viewport.height}`
@@ -329,47 +334,49 @@ function ClickHeatmapView({
             <EmptyState message="No click data for this page yet." />
           ) : (
             <>
-          <div className={styles.snapshotClip}>
-            {showSnapshot && !snapshotReady && <CanvasLoading />}
-            {showSnapshot && snapshot?.imageUrl && <SnapshotImage snapshot={snapshot} onReady={handleSnapshotReady} />}
-          </div>
-          {showOverlay && (
-            <div className={styles.overlay}>
-              {visible.map((point, index) => {
-                const intensity = Math.min(1, point.count / maxCount);
-                const desiredSize = 24 + intensity * 36;
-                const pointWidth = Math.max(overlayPageW, point.pageX);
-                const pointHeight = Math.max(overlayPageH, point.pageY);
-                const rawCenterX = (point.pageX / Math.max(1, pointWidth)) * 100;
-                const rawCenterY = (point.pageY / Math.max(1, pointHeight)) * 100;
-                const size = desiredSize;
-                const centerX = Math.max(
-                  CLICK_EDGE_PERCENT,
-                  Math.min(100 - CLICK_EDGE_PERCENT, rawCenterX),
-                );
-                const centerY = Math.max(
-                  CLICK_EDGE_PERCENT,
-                  Math.min(100 - CLICK_EDGE_PERCENT, rawCenterY),
-                );
+              <div className={styles.snapshotClip}>
+                {showSnapshot && !snapshotReady && <CanvasLoading />}
+                {showSnapshot && snapshot?.imageUrl && (
+                  <SnapshotImage snapshot={snapshot} onReady={handleSnapshotReady} />
+                )}
+              </div>
+              {showOverlay && (
+                <div className={styles.overlay}>
+                  {visible.map((point, index) => {
+                    const intensity = Math.min(1, point.count / maxCount);
+                    const desiredSize = 24 + intensity * 36;
+                    const pointWidth = Math.max(overlayPageW, point.pageX);
+                    const pointHeight = Math.max(overlayPageH, point.pageY);
+                    const rawCenterX = (point.pageX / Math.max(1, pointWidth)) * 100;
+                    const rawCenterY = (point.pageY / Math.max(1, pointHeight)) * 100;
+                    const size = desiredSize;
+                    const centerX = Math.max(
+                      CLICK_EDGE_PERCENT,
+                      Math.min(100 - CLICK_EDGE_PERCENT, rawCenterX),
+                    );
+                    const centerY = Math.max(
+                      CLICK_EDGE_PERCENT,
+                      Math.min(100 - CLICK_EDGE_PERCENT, rawCenterY),
+                    );
 
-                return (
-                  <div
-                    key={`${point.pageX}-${point.pageY}-${index}`}
-                    className={styles.dot}
-                    style={{
-                      left: `${centerX}%`,
-                      top: `${centerY}%`,
-                      width: size,
-                      height: size,
-                      transform: 'translate(-50%, -50%)',
-                      opacity: 0.25 + intensity * 0.55,
-                    }}
-                    title={`${point.count} click${point.count === 1 ? '' : 's'}`}
-                  />
-                );
-              })}
-            </div>
-          )}
+                    return (
+                      <div
+                        key={`${point.pageX}-${point.pageY}-${index}`}
+                        className={styles.dot}
+                        style={{
+                          left: `${centerX}%`,
+                          top: `${centerY}%`,
+                          width: size,
+                          height: size,
+                          transform: 'translate(-50%, -50%)',
+                          opacity: 0.25 + intensity * 0.55,
+                        }}
+                        title={`${point.count} click${point.count === 1 ? '' : 's'}`}
+                      />
+                    );
+                  })}
+                </div>
+              )}
             </>
           )}
         </div>
@@ -405,8 +412,14 @@ function ScrollHeatmapView({
   useEffect(() => {
     setSnapshotReady(!(showPage && hasSnapshotImage));
   }, [hasSnapshotImage, showPage, snapshot?.id]);
-  const { buckets = [], totalSessions = 0, pageW = 0, pageH = 0, viewportW = 0, viewportH = 0 } =
-    scroll ?? {};
+  const {
+    buckets = [],
+    totalSessions = 0,
+    pageW = 0,
+    pageH = 0,
+    viewportW = 0,
+    viewportH = 0,
+  } = scroll ?? {};
   const baseWidth = Math.max(pageW, 1);
   const baseHeight = Math.max(pageH, 640);
   const renderWidth = snapshot?.pageW ?? baseWidth;
@@ -451,7 +464,12 @@ function ScrollHeatmapView({
           </Text>
         </Row>
       ) : (
-        <Row alignItems="center" justifyContent="space-between" gap className={styles.summaryHeader}>
+        <Row
+          alignItems="center"
+          justifyContent="space-between"
+          gap
+          className={styles.summaryHeader}
+        >
           <Text color="muted" className={styles.summaryStat}>
             {hasScrollData
               ? `${formatLongNumber(totalSessions)} sessions - page ${pageW}x${pageH}${viewportH ? ` - viewport ${viewportW}x${viewportH}` : ''}`
@@ -481,33 +499,38 @@ function ScrollHeatmapView({
             <EmptyState message="No scroll data for this page yet." />
           ) : (
             <div className={styles.canvasClip}>
-            {showSnapshot && !snapshotReady && <CanvasLoading />}
-            {showSnapshot && snapshot?.imageUrl && <SnapshotImage snapshot={snapshot} onReady={handleSnapshotReady} />}
-            {showOverlay && (
-              <div className={styles.overlay}>
-                {bands.map(band => {
-                  const intensity = band.ratio;
-                  const hue = Math.round(60 - intensity * 60);
+              {showSnapshot && !snapshotReady && <CanvasLoading />}
+              {showSnapshot && snapshot?.imageUrl && (
+                <SnapshotImage snapshot={snapshot} onReady={handleSnapshotReady} />
+              )}
+              {showOverlay && (
+                <div className={styles.overlay}>
+                  {bands.map(band => {
+                    const intensity = band.ratio;
+                    const hue = Math.round(60 - intensity * 60);
 
-                  return (
-                    <div
-                      key={band.fromPct}
-                      className={styles.scrollBand}
-                      style={{
-                        top: `${band.fromPct}%`,
-                        height: `${Math.max(0, band.toPct - band.fromPct)}%`,
-                        background: intensity > 0 ? `hsla(${hue}, 90%, 55%, ${0.12 + intensity * 0.45})` : 'none',
-                      }}
-                      title={`${band.toPct}% depth - ${formatLongNumber(band.reached)} sessions reached`}
-                    >
-                      <span className={styles.scrollBandLabel}>
-                        {band.toPct}% depth - {Math.round(intensity * 100)}% reached
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    return (
+                      <div
+                        key={band.fromPct}
+                        className={styles.scrollBand}
+                        style={{
+                          top: `${band.fromPct}%`,
+                          height: `${Math.max(0, band.toPct - band.fromPct)}%`,
+                          background:
+                            intensity > 0
+                              ? `hsla(${hue}, 90%, 55%, ${0.12 + intensity * 0.45})`
+                              : 'none',
+                        }}
+                        title={`${band.toPct}% depth - ${formatLongNumber(band.reached)} sessions reached`}
+                      >
+                        <span className={styles.scrollBandLabel}>
+                          {band.toPct}% depth - {Math.round(intensity * 100)}% reached
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -524,13 +547,7 @@ function ScrollHeatmapView({
   );
 }
 
-function SnapshotImage({
-  snapshot,
-  onReady,
-}: {
-  snapshot: HeatmapSnapshot;
-  onReady: () => void;
-}) {
+function SnapshotImage({ snapshot, onReady }: { snapshot: HeatmapSnapshot; onReady: () => void }) {
   const [src, setSrc] = useState<string | null>(null);
 
   useEffect(() => {

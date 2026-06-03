@@ -30,8 +30,6 @@ describe('getApiUrl', () => {
   });
 
   test('returns absolute input urls unchanged', () => {
-    expect(getApiUrl('https://example.com/api/websites')).toBe(
-      'https://example.com/api/websites',
-    );
+    expect(getApiUrl('https://example.com/api/websites')).toBe('https://example.com/api/websites');
   });
 });

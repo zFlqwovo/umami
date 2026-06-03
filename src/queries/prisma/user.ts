@@ -130,9 +130,7 @@ export async function deleteUser(userId: string) {
 
   const teamIds = teams.map(a => a.id);
 
-  const ownedFilter = cloudMode
-    ? { userId }
-    : { OR: [{ userId }, { teamId: { in: teamIds } }] };
+  const ownedFilter = cloudMode ? { userId } : { OR: [{ userId }, { teamId: { in: teamIds } }] };
 
   const [links, pixels, boards] = await Promise.all([
     client.link.findMany({

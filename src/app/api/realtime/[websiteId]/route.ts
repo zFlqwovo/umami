@@ -3,8 +3,8 @@ import { z } from 'zod';
 import { REALTIME_RANGE } from '@/lib/constants';
 import { getQueryFilters, parseRequest } from '@/lib/request';
 import { json, unauthorized } from '@/lib/response';
-import { canViewWebsiteSection } from '@/permissions';
 import { filterParams, timezoneParam, unitParam } from '@/lib/schema';
+import { canViewWebsiteSection } from '@/permissions';
 import { getRealtimeData } from '@/queries/sql';
 
 export async function GET(

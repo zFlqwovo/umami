@@ -102,7 +102,6 @@
     "playwright-core": "^1.60.0",
     "prisma": "^7.8.0",
     "prop-types": "^15.8.1",
-    "pure-rand": "^8.4.0",
     "react": "^19.2.6",
     "react-aria-components": "^1.17.0",
     "react-dom": "^19.2.6",
