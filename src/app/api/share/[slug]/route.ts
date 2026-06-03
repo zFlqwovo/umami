@@ -5,8 +5,11 @@ import { createToken } from '@/lib/jwt';
 import prisma from '@/lib/prisma';
 import redis from '@/lib/redis';
 import { json, notFound } from '@/lib/response';
-import type { BoardParameters, WhiteLabel } from '@/lib/types';
-import { getBoard, getLink, getPixel, getShareByCode, getWebsite } from '@/queries/prisma';
+import type { Auth, BoardParameters, WhiteLabel } from '@/lib/types';
+import { canViewLink, canViewPixel, canViewWebsite } from '@/permissions';
+import { getBoard, getLink, getPixel, getShareByCode, getUser, getWebsite } from '@/queries/prisma';
+
+type BoardEntityIds = ReturnType<typeof getBoardEntityIds>;
 
 async function getAccountId(entity: { userId?: string; teamId?: string }): Promise<string | null> {
   if (entity.userId) {
@@ -44,6 +47,70 @@ async function getWhiteLabel(accountId: string): Promise<WhiteLabel | null> {
   return null;
 }
 
+async function filterEntityIds(
+  ids: string[],
+  canView: (id: string) => Promise<boolean>,
+): Promise<string[]> {
+  const results = await Promise.all(
+    ids.map(async id => {
+      try {
+        return (await canView(id)) ? id : null;
+      } catch {
+        return null;
+      }
+    }),
+  );
+
+  return results.filter((id): id is string => !!id);
+}
+
+async function filterBoardEntityIdsForShare(
+  entity: { userId?: string | null; teamId?: string | null },
+  ids: BoardEntityIds,
+): Promise<BoardEntityIds> {
+  if (entity.teamId) {
+    return {
+      websiteIds: await filterEntityIds(
+        ids.websiteIds,
+        async id => (await getWebsite(id))?.teamId === entity.teamId,
+      ),
+      pixelIds: await filterEntityIds(
+        ids.pixelIds,
+        async id => (await getPixel(id))?.teamId === entity.teamId,
+      ),
+      linkIds: await filterEntityIds(
+        ids.linkIds,
+        async id => (await getLink(id))?.teamId === entity.teamId,
+      ),
+    };
+  }
+
+  if (!entity.userId) {
+    return { websiteIds: [], pixelIds: [], linkIds: [] };
+  }
+
+  const user = await getUser(entity.userId);
+
+  if (!user) {
+    return { websiteIds: [], pixelIds: [], linkIds: [] };
+  }
+
+  const auth: Auth = {
+    user: {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      isAdmin: user.role === ROLES.admin,
+    },
+  };
+
+  return {
+    websiteIds: await filterEntityIds(ids.websiteIds, id => canViewWebsite(auth, id)),
+    pixelIds: await filterEntityIds(ids.pixelIds, id => canViewPixel(auth, id)),
+    linkIds: await filterEntityIds(ids.linkIds, id => canViewLink(auth, id)),
+  };
+}
+
 export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
@@ -70,9 +137,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
       type: board.type,
       parameters: board.parameters as BoardParameters,
     });
-    data.websiteIds = boardEntityIds.websiteIds;
-    data.pixelIds = boardEntityIds.pixelIds;
-    data.linkIds = boardEntityIds.linkIds;
+    const authorizedEntityIds = await filterBoardEntityIdsForShare(board, boardEntityIds);
+    data.websiteIds = authorizedEntityIds.websiteIds;
+    data.pixelIds = authorizedEntityIds.pixelIds;
+    data.linkIds = authorizedEntityIds.linkIds;
   } else if (share.shareType === ENTITY_TYPE.website) {
     entity = await getWebsite(share.entityId);
     if (!entity) return notFound();
