@@ -180,6 +180,13 @@ export const ROLES = {
   teamViewOnly: 'team-view-only',
 } as const;
 
+export const TEAM_ROLE_RANK: Record<string, number> = {
+  [ROLES.teamViewOnly]: 0,
+  [ROLES.teamMember]: 1,
+  [ROLES.teamManager]: 2,
+  [ROLES.teamOwner]: 3,
+} as const;
+
 export const PERMISSIONS = {
   all: 'all',
   websiteCreate: 'website:create',
