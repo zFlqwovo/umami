@@ -40,8 +40,28 @@ export async function GET(
 
   const zip = new JSZip();
 
+  // Prefix cells whose first character is a formula trigger with a single quote
+  // to prevent CSV formula injection when opened in spreadsheet applications.
+  const FORMULA_TRIGGERS = new Set(['=', '+', '-', '@', '\t', '\r']);
+
+  const sanitizeCsvValue = (value: unknown): unknown => {
+    if (typeof value === 'string' && value.length > 0 && FORMULA_TRIGGERS.has(value[0])) {
+      return `'${value}`;
+    }
+    return value;
+  };
+
+  const sanitizeRow = (row: Record<string, unknown>): Record<string, unknown> => {
+    const sanitized: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(row)) {
+      sanitized[key] = sanitizeCsvValue(value);
+    }
+    return sanitized;
+  };
+
   const parse = (data: any) => {
-    return Papa.unparse(data, {
+    const sanitized = Array.isArray(data) ? data.map(sanitizeRow) : data;
+    return Papa.unparse(sanitized, {
       header: true,
       skipEmptyLines: true,
     });

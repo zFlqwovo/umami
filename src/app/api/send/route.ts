@@ -21,6 +21,17 @@ interface Cache {
   iat: number;
 }
 
+// Reject strings whose first character is a spreadsheet formula trigger to
+// prevent CSV formula injection in analytics exports (defense-in-depth).
+const FORMULA_TRIGGER_RE = /^[=+\-@\t\r]/;
+const safeStringParam = (maxLen: number) =>
+  z
+    .string()
+    .max(maxLen)
+    .refine(val => !FORMULA_TRIGGER_RE.test(val), {
+      message: 'Value must not start with =, +, -, @, tab, or carriage return',
+    });
+
 const schema = z.object({
   type: z.enum(['event', 'identify', 'performance']),
   payload: z
@@ -35,8 +46,8 @@ const schema = z.object({
       screen: z.string().max(11).optional(),
       title: z.string().optional(),
       url: urlOrPathParam.optional(),
-      name: z.string().max(50).optional(),
-      tag: z.string().max(50).optional(),
+      name: safeStringParam(50).optional(),
+      tag: safeStringParam(50).optional(),
       ip: z.string().optional(),
       userAgent: z.string().optional(),
       timestamp: z.coerce.number().int().optional(),
