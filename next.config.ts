@@ -160,7 +160,7 @@ if (isRelativeUrl(apiUrl)) {
   }
 } else if (apiUrl) {
   beforeFilesRewrites.push({
-    source: '/api/:path((?!auth(?:/|$)|config(?:/|$)).*)',
+    source: '/api/:path((?!config(?:/|$)).*)',
     destination: `${apiUrl.replace(/\/+$/, '')}/:path`,
   });
 }

@@ -20,13 +20,22 @@ describe('getApiUrl', () => {
     ).toBe('/analytics/internal-api/websites');
   });
 
-  test('keeps app routes on the local api path', () => {
+  test('uses a relative API_URL for auth routes', () => {
     expect(
       getApiUrl('/auth/verify', {
         apiUrl: '/internal-api',
         basePath: '/analytics',
       }),
-    ).toBe('/analytics/api/auth/verify');
+    ).toBe('/analytics/internal-api/auth/verify');
+  });
+
+  test('keeps config routes on the local api path', () => {
+    expect(
+      getApiUrl('/config', {
+        apiUrl: '/internal-api',
+        basePath: '/analytics',
+      }),
+    ).toBe('/analytics/api/config');
   });
 
   test('returns absolute input urls unchanged', () => {
