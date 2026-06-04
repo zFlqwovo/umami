@@ -20,13 +20,13 @@ describe('getApiUrl', () => {
     ).toBe('/analytics/internal-api/websites');
   });
 
-  test('uses a relative API_URL for auth routes', () => {
+  test('keeps app routes on the local api path', () => {
     expect(
       getApiUrl('/auth/verify', {
         apiUrl: '/internal-api',
         basePath: '/analytics',
       }),
-    ).toBe('/analytics/internal-api/auth/verify');
+    ).toBe('/analytics/api/auth/verify');
   });
 
   test('keeps config routes on the local api path', () => {
