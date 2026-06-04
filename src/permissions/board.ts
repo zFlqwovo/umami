@@ -21,7 +21,7 @@ export async function canViewBoardEntities(
   parameters: BoardParameters = {},
 ) {
   const { websiteIds, pixelIds, linkIds } = getBoardEntityIds({ type, parameters });
-  const userOnlyAuth: Auth = auth.user ? { user: auth.user } : {};
+  const userOnlyAuth: Auth = { user: auth.user };
   const checks = [
     ...websiteIds.map(id => checkBoardEntityAccess(canViewWebsite(userOnlyAuth, id))),
     ...pixelIds.map(id => checkBoardEntityAccess(canViewPixel(userOnlyAuth, id))),

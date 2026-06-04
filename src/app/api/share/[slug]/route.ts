@@ -10,6 +10,7 @@ import { canViewLink, canViewPixel, canViewWebsite } from '@/permissions';
 import { getBoard, getLink, getPixel, getShareByCode, getUser, getWebsite } from '@/queries/prisma';
 
 type BoardEntityIds = ReturnType<typeof getBoardEntityIds>;
+type OwnedEntity = { userId?: string | null; teamId?: string | null } | null;
 
 async function getAccountId(entity: { userId?: string; teamId?: string }): Promise<string | null> {
   if (entity.userId) {
@@ -64,23 +65,38 @@ async function filterEntityIds(
   return results.filter((id): id is string => !!id);
 }
 
+async function getTeamUserIds(teamId: string) {
+  const teamUsers = await prisma.client.teamUser.findMany({
+    where: { teamId },
+    select: { userId: true },
+  });
+
+  return new Set(teamUsers.map(({ userId }) => userId));
+}
+
+function isOwnedByTeam(entity: OwnedEntity, teamId: string, teamUserIds: Set<string>) {
+  return entity?.teamId === teamId || !!(entity?.userId && teamUserIds.has(entity.userId));
+}
+
 async function filterBoardEntityIdsForShare(
   entity: { userId?: string | null; teamId?: string | null },
   ids: BoardEntityIds,
 ): Promise<BoardEntityIds> {
   if (entity.teamId) {
+    const teamUserIds = await getTeamUserIds(entity.teamId);
+
     return {
       websiteIds: await filterEntityIds(
         ids.websiteIds,
-        async id => (await getWebsite(id))?.teamId === entity.teamId,
+        async id => isOwnedByTeam(await getWebsite(id), entity.teamId, teamUserIds),
       ),
       pixelIds: await filterEntityIds(
         ids.pixelIds,
-        async id => (await getPixel(id))?.teamId === entity.teamId,
+        async id => isOwnedByTeam(await getPixel(id), entity.teamId, teamUserIds),
       ),
       linkIds: await filterEntityIds(
         ids.linkIds,
-        async id => (await getLink(id))?.teamId === entity.teamId,
+        async id => isOwnedByTeam(await getLink(id), entity.teamId, teamUserIds),
       ),
     };
   }
