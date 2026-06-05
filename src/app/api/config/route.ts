@@ -19,6 +19,5 @@ export async function GET(request: Request) {
     telemetryDisabled: !!process.env.DISABLE_TELEMETRY,
     trackerScriptName: process.env.TRACKER_SCRIPT_NAME,
     updatesDisabled: !!process.env.DISABLE_UPDATES,
-    currentVersion: !!process.env.currentVersion,
   });
 }
