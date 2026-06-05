@@ -123,7 +123,6 @@ if (isProd) {
 }
 
 const rewrites = [];
-const beforeFilesRewrites = [];
 
 if (trackerScriptURL) {
   rewrites.push({
@@ -158,11 +157,6 @@ if (isRelativeUrl(apiUrl)) {
       destination: '/api/:path*',
     });
   }
-} else if (apiUrl) {
-  beforeFilesRewrites.push({
-    source: '/api/:path((?!auth(?:/|$)|config(?:/|$)).*)',
-    destination: `${apiUrl.replace(/\/+$/, '')}/:path`,
-  });
 }
 
 const redirects = [
@@ -250,20 +244,17 @@ export default withNextIntl({
     return headers;
   },
   async rewrites() {
-    return {
-      beforeFiles: beforeFilesRewrites,
-      afterFiles: [
-        ...rewrites,
-        {
-          source: '/telemetry.js',
-          destination: '/api/scripts/telemetry',
-        },
-        {
-          source: '/teams/:teamId/:path*',
-          destination: '/:path*',
-        },
-      ],
-    };
+    return [
+      ...rewrites,
+      {
+        source: '/telemetry.js',
+        destination: '/api/scripts/telemetry',
+      },
+      {
+        source: '/teams/:teamId/:path*',
+        destination: '/:path*',
+      },
+    ];
   },
   async redirects() {
     return [...redirects];
