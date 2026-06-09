@@ -6,7 +6,7 @@ export interface SubscriptionAccount {
   unlimitedWebsites?: boolean | null;
 }
 
-export const CLOUD_FREE_WEBSITE_LIMIT = 3;
+export const CLOUD_FREE_WEBSITE_LIMIT = 1;
 export const CLOUD_PRO_WEBSITE_LIMIT = 20;
 
 export function getCloudWebsiteLimit(account?: SubscriptionAccount | null): number | null {
