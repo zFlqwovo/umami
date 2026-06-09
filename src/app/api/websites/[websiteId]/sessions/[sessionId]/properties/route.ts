@@ -1,6 +1,6 @@
 import { parseRequest } from '@/lib/request';
 import { json, unauthorized } from '@/lib/response';
-import { canViewAuthenticatedWebsite } from '@/permissions';
+import { canViewWebsiteSection } from '@/permissions';
 import { getSessionData } from '@/queries/sql';
 
 export async function GET(
@@ -15,7 +15,14 @@ export async function GET(
 
   const { websiteId, sessionId } = await params;
 
-  if (!(await canViewAuthenticatedWebsite(auth, websiteId))) {
+  if (
+    !(await canViewWebsiteSection(auth, websiteId, [
+      'sessions',
+      'events',
+      'realtime',
+      'revenue',
+    ]))
+  ) {
     return unauthorized();
   }
 

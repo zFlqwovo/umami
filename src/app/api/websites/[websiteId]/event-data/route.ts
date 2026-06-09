@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { getQueryFilters, parseRequest } from '@/lib/request';
 import { json, unauthorized } from '@/lib/response';
 import { filterParams, pagingParams } from '@/lib/schema';
-import { canViewAuthenticatedWebsite } from '@/permissions';
+import { canViewWebsiteSection } from '@/permissions';
 import { getEventData } from '@/queries/sql/events/getEventData';
 
 export async function GET(
@@ -24,7 +24,7 @@ export async function GET(
 
   const { websiteId } = await params;
 
-  if (!(await canViewAuthenticatedWebsite(auth, websiteId))) {
+  if (!(await canViewWebsiteSection(auth, websiteId, 'events'))) {
     return unauthorized();
   }
 

@@ -40,7 +40,14 @@ type ShareSectionInput = ShareSection | ShareSection[];
 function shareTokenIncludesWebsite(auth: Auth | null | undefined, websiteId: string) {
   const { shareToken } = auth || {};
 
-  return shareToken?.websiteId === websiteId || shareToken?.websiteIds?.includes(websiteId);
+  return (
+    shareToken?.websiteId === websiteId ||
+    shareToken?.pixelId === websiteId ||
+    shareToken?.linkId === websiteId ||
+    shareToken?.websiteIds?.includes(websiteId) ||
+    shareToken?.pixelIds?.includes(websiteId) ||
+    shareToken?.linkIds?.includes(websiteId)
+  );
 }
 
 export async function canViewWebsiteSection(
@@ -54,11 +61,7 @@ export async function canViewWebsiteSection(
 
   const { shareToken } = auth || {};
 
-  if (
-    !shareToken ||
-    shareToken.shareType !== ENTITY_TYPE.website ||
-    !shareTokenIncludesWebsite(auth, websiteId)
-  ) {
+  if (!shareToken || !shareTokenIncludesWebsite(auth, websiteId)) {
     return false;
   }
 
@@ -79,11 +82,20 @@ export async function canViewSharedWebsite(auth: Auth | null | undefined, websit
     return canViewWebsite(auth, websiteId);
   }
 
+  return shareTokenIncludesWebsite(auth, websiteId);
+}
+
+export async function canViewSharedWebsiteFilters(
+  auth: Auth | null | undefined,
+  websiteId: string,
+) {
+  if (auth?.user) {
+    return canViewWebsite(auth, websiteId);
+  }
+
   const { shareToken } = auth || {};
 
-  return (
-    shareToken?.shareType === ENTITY_TYPE.website && shareTokenIncludesWebsite(auth, websiteId)
-  );
+  return shareTokenIncludesWebsite(auth, websiteId) && shareToken?.parameters?.allowFilter !== false;
 }
 
 export async function canViewAuthenticatedWebsite(
