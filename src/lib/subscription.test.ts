@@ -9,6 +9,13 @@ describe('getCloudWebsiteLimit', () => {
   test('limits accounts without a subscription to the free website limit', () => {
     expect(getCloudWebsiteLimit(null)).toBe(CLOUD_FREE_WEBSITE_LIMIT);
     expect(getCloudWebsiteLimit({ hasSubscription: false })).toBe(CLOUD_FREE_WEBSITE_LIMIT);
+    expect(getCloudWebsiteLimit({ hasSubscription: false, unlimitedWebsites: true })).toBe(
+      CLOUD_FREE_WEBSITE_LIMIT,
+    );
+  });
+
+  test('does not limit subscribed accounts with unlimited websites enabled', () => {
+    expect(getCloudWebsiteLimit({ hasSubscription: true, unlimitedWebsites: true })).toBeNull();
   });
 
   test('limits Pro accounts to the Pro website limit', () => {
