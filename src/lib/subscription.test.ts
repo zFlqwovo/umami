@@ -28,4 +28,18 @@ describe('getCloudWebsiteLimit', () => {
     expect(getCloudWebsiteLimit({ hasSubscription: true, isBusiness: true })).toBeNull();
     expect(getCloudWebsiteLimit({ hasSubscription: true, isNoBilling: true })).toBeNull();
   });
+
+  // Team-owned websites pass the team cache object (derived from the team owner's account)
+  // through this same function, so members inherit the owner's unlimitedWebsites entitlement.
+  test('does not limit teams that inherit unlimited websites from a subscribed owner', () => {
+    expect(
+      getCloudWebsiteLimit({ hasSubscription: true, isPro: true, unlimitedWebsites: true }),
+    ).toBeNull();
+  });
+
+  test('still limits teams whose owner has no subscription even if unlimited websites is set', () => {
+    expect(
+      getCloudWebsiteLimit({ hasSubscription: false, unlimitedWebsites: true }),
+    ).toBe(CLOUD_FREE_WEBSITE_LIMIT);
+  });
 });

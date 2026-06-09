@@ -70,6 +70,7 @@ export async function POST(request: Request) {
           isBusiness: account.isBusiness || false,
           isNoBilling: account.isNoBilling || false,
           hasSubscription: account.hasSubscription || false,
+          unlimitedWebsites: account.unlimitedWebsites || false,
         },
         60 * 60 * 24 * 90,
       );
