@@ -3,7 +3,7 @@ import { parsePropertyFilters } from '@/lib/params';
 import { getQueryFilters, parseRequest } from '@/lib/request';
 import { json, unauthorized } from '@/lib/response';
 import { filterParams } from '@/lib/schema';
-import { canViewAuthenticatedWebsite } from '@/permissions';
+import { canViewWebsiteSection } from '@/permissions';
 import { getSessionDataProperties } from '@/queries/sql';
 
 export async function GET(
@@ -25,7 +25,7 @@ export async function GET(
 
   const { websiteId } = await params;
 
-  if (!(await canViewAuthenticatedWebsite(auth, websiteId))) {
+  if (!(await canViewWebsiteSection(auth, websiteId, 'sessions'))) {
     return unauthorized();
   }
 
