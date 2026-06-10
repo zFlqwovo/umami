@@ -100,22 +100,22 @@ async function clickhouseQuery(websiteId: string, filters: QueryFilters) {
     sql = `
     select
       session_id as id,
-      website_id as websiteId,
-      hostname,
-      browser,
-      os,
-      device,
-      screen,
-      language,
-      country,
-      region,
-      city,
+      any(website_id) as websiteId,
+      argMax(hostname, created_at) as hostname,
+      argMax(browser, created_at) as browser,
+      argMax(os, created_at) as os,
+      argMax(device, created_at) as device,
+      argMax(screen, created_at) as screen,
+      argMax(language, created_at) as language,
+      argMax(country, created_at) as country,
+      argMax(region, created_at) as region,
+      argMax(city, created_at) as city,
       ${getDateStringSQL('min(created_at)')} as firstAt,
       ${getDateStringSQL('max(created_at)')} as lastAt,
       uniq(visit_id) as visits,
       sumIf(1, event_type = 1) as views,
       sumIf(1, event_type = 2) as events,
-      lastAt as createdAt
+      max(created_at) as createdAt
     from website_event
     ${cohortQuery}
     where website_id = {websiteId:UUID}
@@ -123,29 +123,29 @@ async function clickhouseQuery(websiteId: string, filters: QueryFilters) {
     ${dateQuery}
     ${filterQuery}
     ${searchQuery}
-    group by session_id, website_id, hostname, browser, os, device, screen, language, country, region, city
+    group by session_id
     order by lastAt desc
     `;
   } else {
     sql = `
     select
       session_id as id,
-      website_id as websiteId,
-      arrayFirst(x -> 1, hostname) hostname,
-      browser,
-      os,
-      device,
-      screen,
-      language,
-      country,
-      region,
-      city,
+      any(website_id) as websiteId,
+      argMax(arrayFirst(x -> 1, hostname), max_time) as hostname,
+      argMax(browser, max_time) as browser,
+      argMax(os, max_time) as os,
+      argMax(device, max_time) as device,
+      argMax(screen, max_time) as screen,
+      argMax(language, max_time) as language,
+      argMax(country, max_time) as country,
+      argMax(region, max_time) as region,
+      argMax(city, max_time) as city,
       ${getDateStringSQL('min(min_time)')} as firstAt,
       ${getDateStringSQL('max(max_time)')} as lastAt,
       uniq(visit_id) as visits,
       sumIf(views, event_type = 1) as views,
       sum(length(event_name)) as events,
-      lastAt as createdAt
+      max(max_time) as createdAt
     from website_event_stats_hourly as website_event
     ${cohortQuery}
     where website_id = {websiteId:UUID}
@@ -153,7 +153,7 @@ async function clickhouseQuery(websiteId: string, filters: QueryFilters) {
     ${dateQuery}
     ${filterQuery}
     ${searchQuery}
-    group by session_id, website_id, hostname, browser, os, device, screen, language, country, region, city
+    group by session_id
     order by lastAt desc
     `;
   }
