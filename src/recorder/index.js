@@ -22,7 +22,7 @@ import { record } from 'rrweb';
   const configEndpoint = `${hostBase}__RECORDER_CONFIG_ENDPOINT__`.replace('{websiteId}', website);
 
   const REPLAY_FLUSH_EVENT_COUNT = 100;
-  const REPLAY_FLUSH_INTERVAL = 10000;
+  const REPLAY_FLUSH_INTERVAL = 2000;
   const HEATMAP_FLUSH_EVENT_COUNT = 20;
   const HEATMAP_FLUSH_INTERVAL = 5000;
 
@@ -104,11 +104,6 @@ import { record } from 'rrweb';
     );
   };
 
-  const scheduleReplayFlush = () => {
-    if (replayFlushTimer) clearTimeout(replayFlushTimer);
-    replayFlushTimer = setTimeout(() => flushReplay(), REPLAY_FLUSH_INTERVAL);
-  };
-
   const scheduleHeatmapFlush = () => {
     if (heatmapFlushTimer) clearTimeout(heatmapFlushTimer);
     heatmapFlushTimer = setTimeout(() => flushHeatmap(), HEATMAP_FLUSH_INTERVAL);
@@ -133,7 +128,7 @@ import { record } from 'rrweb';
 
     replayStopped = true;
 
-    if (replayFlushTimer) clearTimeout(replayFlushTimer);
+    if (replayFlushTimer) clearInterval(replayFlushTimer);
     flushReplay();
 
     if (replayStopFn) {
@@ -267,6 +262,8 @@ import { record } from 'rrweb';
   const beginReplayCapture = () => {
     replayStartTime = Date.now();
 
+    replayFlushTimer = setInterval(() => flushReplay(), REPLAY_FLUSH_INTERVAL);
+
     replayStopFn = record({
       emit(event) {
         if (replayStopped) return;
@@ -281,8 +278,6 @@ import { record } from 'rrweb';
         if (replayBuffer.length >= REPLAY_FLUSH_EVENT_COUNT) {
           flushReplay();
         }
-
-        scheduleReplayFlush();
       },
       ...getMaskConfig(maskLevel),
       inlineStylesheet: true,
@@ -463,6 +458,10 @@ import { record } from 'rrweb';
       if (document.visibilityState === 'hidden') {
         flushReplay(true);
       }
+    });
+
+    window.addEventListener('pagehide', () => {
+      flushReplay(true);
     });
 
     window.addEventListener('beforeunload', () => {
