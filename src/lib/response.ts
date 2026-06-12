@@ -36,6 +36,15 @@ export function forbidden(error?: Record<string, any>) {
   );
 }
 
+export function payloadTooLarge(error?: Record<string, any>) {
+  return Response.json(
+    {
+      error: { message: 'Payload too large', code: 'payload-too-large', status: 413, ...error },
+    },
+    { status: 413 },
+  );
+}
+
 export function notFound(error?: Record<string, any>) {
   return Response.json(
     { error: { message: 'Not found', code: 'not-found', status: 404, ...error } },

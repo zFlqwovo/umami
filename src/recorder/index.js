@@ -22,7 +22,8 @@ import { record } from 'rrweb';
   const configEndpoint = `${hostBase}__RECORDER_CONFIG_ENDPOINT__`.replace('{websiteId}', website);
 
   const REPLAY_FLUSH_EVENT_COUNT = 100;
-  const REPLAY_FLUSH_INTERVAL = 10000;
+  const REPLAY_FLUSH_INTERVAL = 2000;
+  const REPLAY_MAX_PAYLOAD_SIZE = 900000;
   const HEATMAP_FLUSH_EVENT_COUNT = 20;
   const HEATMAP_FLUSH_INTERVAL = 5000;
 
@@ -45,12 +46,8 @@ import { record } from 'rrweb';
 
   const getSessionCache = () => window.umami?.getSession?.()?.cache;
 
-  const sendPayload = (type, payload, useKeepalive = false) => {
-    const cache = getSessionCache();
-
-    if (!cache) return;
-
-    const body = JSON.stringify({
+  const getPayloadBody = (type, payload) =>
+    JSON.stringify({
       type,
       payload: {
         website,
@@ -58,7 +55,28 @@ import { record } from 'rrweb';
       },
     });
 
-    const keepalive = useKeepalive && body.length < 60000;
+  const getPayloadSize = body => {
+    try {
+      return new Blob([body]).size;
+    } catch {
+      return body.length;
+    }
+  };
+
+  const getReplayPayloadSize = (events, timestamp) =>
+    getPayloadSize(getPayloadBody('record', { events, timestamp }));
+
+  const isReplayPayloadTooLarge = (events, timestamp) =>
+    getReplayPayloadSize(events, timestamp) > REPLAY_MAX_PAYLOAD_SIZE;
+
+  const sendPayload = (type, payload, useKeepalive = false) => {
+    const cache = getSessionCache();
+
+    if (!cache) return;
+
+    const body = getPayloadBody(type, payload);
+
+    const keepalive = useKeepalive && getPayloadSize(body) < 60000;
 
     return fetch(endpoint, {
       keepalive,
@@ -72,20 +90,55 @@ import { record } from 'rrweb';
     }).catch(() => {});
   };
 
+  const sendReplayEvents = (events, timestamp, useKeepalive = false) => {
+    let chunk = [];
+    let chunkOffset = 0;
+
+    events.forEach(event => {
+      const candidate = [...chunk, event];
+
+      if (isReplayPayloadTooLarge(candidate, timestamp + chunkOffset)) {
+        if (chunk.length) {
+          sendPayload(
+            'record',
+            {
+              events: chunk,
+              timestamp: timestamp + chunkOffset,
+            },
+            useKeepalive,
+          );
+          chunk = [];
+          chunkOffset += 1;
+        }
+
+        if (isReplayPayloadTooLarge([event], timestamp + chunkOffset)) {
+          chunkOffset += 1;
+          return;
+        }
+      }
+
+      chunk.push(event);
+    });
+
+    if (chunk.length) {
+      sendPayload(
+        'record',
+        {
+          events: chunk,
+          timestamp: timestamp + chunkOffset,
+        },
+        useKeepalive,
+      );
+    }
+  };
+
   const flushReplay = (useKeepalive = false) => {
     if (!replayBuffer.length) return;
 
     const events = replayBuffer;
     replayBuffer = [];
 
-    sendPayload(
-      'record',
-      {
-        events,
-        timestamp: Math.floor(Date.now() / 1000),
-      },
-      useKeepalive,
-    );
+    sendReplayEvents(events, Math.floor(Date.now() / 1000), useKeepalive);
   };
 
   const flushHeatmap = (useKeepalive = false) => {
@@ -102,11 +155,6 @@ import { record } from 'rrweb';
       },
       useKeepalive,
     );
-  };
-
-  const scheduleReplayFlush = () => {
-    if (replayFlushTimer) clearTimeout(replayFlushTimer);
-    replayFlushTimer = setTimeout(() => flushReplay(), REPLAY_FLUSH_INTERVAL);
   };
 
   const scheduleHeatmapFlush = () => {
@@ -133,7 +181,7 @@ import { record } from 'rrweb';
 
     replayStopped = true;
 
-    if (replayFlushTimer) clearTimeout(replayFlushTimer);
+    if (replayFlushTimer) clearInterval(replayFlushTimer);
     flushReplay();
 
     if (replayStopFn) {
@@ -267,6 +315,8 @@ import { record } from 'rrweb';
   const beginReplayCapture = () => {
     replayStartTime = Date.now();
 
+    replayFlushTimer = setInterval(() => flushReplay(), REPLAY_FLUSH_INTERVAL);
+
     replayStopFn = record({
       emit(event) {
         if (replayStopped) return;
@@ -276,13 +326,21 @@ import { record } from 'rrweb';
           return;
         }
 
-        replayBuffer.push(event);
-
-        if (replayBuffer.length >= REPLAY_FLUSH_EVENT_COUNT) {
+        if (
+          replayBuffer.length &&
+          isReplayPayloadTooLarge([...replayBuffer, event], Math.floor(Date.now() / 1000))
+        ) {
           flushReplay();
         }
 
-        scheduleReplayFlush();
+        replayBuffer.push(event);
+
+        if (
+          replayBuffer.length >= REPLAY_FLUSH_EVENT_COUNT ||
+          isReplayPayloadTooLarge(replayBuffer, Math.floor(Date.now() / 1000))
+        ) {
+          flushReplay();
+        }
       },
       ...getMaskConfig(maskLevel),
       inlineStylesheet: true,
@@ -463,6 +521,10 @@ import { record } from 'rrweb';
       if (document.visibilityState === 'hidden') {
         flushReplay(true);
       }
+    });
+
+    window.addEventListener('pagehide', () => {
+      flushReplay(true);
     });
 
     window.addEventListener('beforeunload', () => {

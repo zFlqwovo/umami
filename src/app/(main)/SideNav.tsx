@@ -74,7 +74,7 @@ export function SideNav(props: any) {
       backgroundColor="surface-base"
       border
       borderRadius
-      paddingX="2"
+      padding="2"
       flexGrow="1"
       minHeight="0"
       margin="2"
@@ -137,7 +137,7 @@ export function SideNav(props: any) {
           </Column>
         )}
       </Column>
-      <Row marginBottom="4" paddingTop="2">
+      <Row paddingTop="2">
         <UserButton showText={!isCollapsed} />
       </Row>
     </Column>

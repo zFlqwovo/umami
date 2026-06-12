@@ -8,7 +8,7 @@ import { parseToken } from '@/lib/jwt';
 import { fetchAccount, fetchTeam } from '@/lib/load';
 import { getRecorderConfig } from '@/lib/recorder';
 import { parseRequest } from '@/lib/request';
-import { badRequest, forbidden, json, serverError } from '@/lib/response';
+import { badRequest, forbidden, json, payloadTooLarge, serverError } from '@/lib/response';
 import { getWebsite } from '@/queries/prisma';
 import { saveRecording } from '@/queries/sql';
 import { saveHeatmapEvents } from '@/queries/sql/heatmap/saveHeatmapEvents';
@@ -17,6 +17,8 @@ interface Cache {
   sessionId: string;
   visitId: string;
 }
+
+const MAX_RECORD_REQUEST_BYTES = 1_000_000;
 
 const schema = z.discriminatedUnion('type', [
   z.object({
@@ -73,8 +75,38 @@ function getUrlPath(url: string) {
   }
 }
 
+async function getRequestBodySize(request: Request): Promise<number | null> {
+  const contentLength = request.headers.get('content-length');
+
+  if (contentLength) {
+    const size = Number(contentLength);
+
+    if (Number.isFinite(size)) {
+      return size;
+    }
+  }
+
+  try {
+    const text = await request.clone().text();
+
+    return new TextEncoder().encode(text).length;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: Request) {
   try {
+    const requestBodySize = await getRequestBodySize(request);
+
+    if (requestBodySize && requestBodySize > MAX_RECORD_REQUEST_BYTES) {
+      return payloadTooLarge({
+        reason: 'payload_too_large',
+        maxBytes: MAX_RECORD_REQUEST_BYTES,
+        size: requestBodySize,
+      });
+    }
+
     const { body, error } = await parseRequest(request, schema, { skipAuth: true });
 
     if (error) {
