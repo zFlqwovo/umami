@@ -18,8 +18,8 @@ import { record } from 'rrweb';
   const host =
     hostUrl || '__COLLECT_API_HOST__' || currentScript.src.split('/').slice(0, -1).join('/');
   const hostBase = host.replace(/\/$/, '');
-  const endpoint = `${hostBase}__COLLECT_REPLAY_ENDPOINT__`;
-  const configEndpoint = `${hostBase}__RECORDER_CONFIG_ENDPOINT__`.replace('{websiteId}', website);
+  const endpoint = `${hostBase}/api/record`;
+  const configEndpoint = `${hostBase}/api/websites/${website}/recorder`;
 
   const REPLAY_FLUSH_EVENT_COUNT = 100;
   const REPLAY_FLUSH_INTERVAL = 2000;
