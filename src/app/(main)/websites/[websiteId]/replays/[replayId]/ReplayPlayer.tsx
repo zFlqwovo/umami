@@ -1,7 +1,9 @@
 'use client';
 import { Column } from '@umami/react-zen';
 import { useEffect, useRef, useState } from 'react';
+import { Empty } from '@/components/common/Empty';
 import { useMobile } from '@/components/hooks';
+import { hasReplayFullSnapshot } from '@/lib/replay';
 import 'rrweb-player/dist/style.css';
 
 export function ReplayPlayer({ events }: { events: any[] }) {
@@ -9,12 +11,14 @@ export function ReplayPlayer({ events }: { events: any[] }) {
   const playerRef = useRef<any>(null);
   const [loaded, setLoaded] = useState(false);
   const { isMobile, isPhone } = useMobile();
+  const canReplay = hasReplayFullSnapshot(events);
+  const showUnavailable = !events?.length || !canReplay;
 
   const playerWidth = isPhone ? 360 : isMobile ? 640 : 1024;
   const playerHeight = isPhone ? 202 : isMobile ? 360 : 576;
 
   useEffect(() => {
-    if (!containerRef.current || !events?.length) return;
+    if (!containerRef.current || !events?.length || !canReplay) return;
 
     import('rrweb-player').then(mod => {
       const RRWebPlayer = mod.default;
@@ -46,7 +50,7 @@ export function ReplayPlayer({ events }: { events: any[] }) {
         playerRef.current = null;
       }
     };
-  }, [events, playerWidth, playerHeight]);
+  }, [canReplay, events, playerWidth, playerHeight]);
 
   return (
     <Column alignItems="center">
@@ -54,14 +58,16 @@ export function ReplayPlayer({ events }: { events: any[] }) {
         ref={containerRef}
         style={{
           width: playerWidth,
-          minHeight: loaded ? undefined : playerHeight,
+          minHeight: loaded && canReplay ? undefined : playerHeight,
           maxWidth: '100%',
           overflow: 'hidden',
           borderRadius: '8px',
           border: '1px solid var(--base300)',
           background: 'var(--base75)',
         }}
-      />
+      >
+        {showUnavailable && <Empty message="Replay unavailable." />}
+      </div>
     </Column>
   );
 }

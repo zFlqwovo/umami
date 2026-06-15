@@ -7,6 +7,7 @@ import { getClientInfo, hasBlockedIp } from '@/lib/detect';
 import { parseToken } from '@/lib/jwt';
 import { fetchAccount, fetchTeam } from '@/lib/load';
 import { getRecorderConfig } from '@/lib/recorder';
+import { getReplayEventCount } from '@/lib/replay';
 import { parseRequest } from '@/lib/request';
 import { badRequest, forbidden, json, payloadTooLarge, serverError } from '@/lib/response';
 import { getWebsite } from '@/queries/prisma';
@@ -197,7 +198,7 @@ export async function POST(request: Request) {
         visitId,
         chunkIndex,
         events,
-        eventCount: events.length,
+        eventCount: getReplayEventCount(events),
         startedAt,
         endedAt,
       });

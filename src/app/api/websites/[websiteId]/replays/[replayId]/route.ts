@@ -1,3 +1,4 @@
+import { restoreReplayEventFragments } from '@/lib/replay';
 import { parseRequest } from '@/lib/request';
 import { json, unauthorized } from '@/lib/response';
 import { canViewAuthenticatedWebsite } from '@/permissions';
@@ -91,7 +92,9 @@ export async function GET(
   }
 
   const chunks = await getReplayChunks(websiteId, replayId, { endAt, endChunkIndex });
-  const allEvents = mergeReplayEvents(chunks, { until, endChunkIndex, endEventIndex });
+  const allEvents = restoreReplayEventFragments(
+    mergeReplayEvents(chunks, { until, endChunkIndex, endEventIndex }),
+  );
   const sessionId = chunks.length > 0 ? chunks[0].sessionId : null;
   const startedAt = chunks.length > 0 ? chunks[0].startedAt : null;
   const endedAt = chunks.length > 0 ? chunks[chunks.length - 1].endedAt : null;

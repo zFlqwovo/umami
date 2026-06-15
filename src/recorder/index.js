@@ -23,7 +23,9 @@ import { record } from 'rrweb';
 
   const REPLAY_FLUSH_EVENT_COUNT = 100;
   const REPLAY_FLUSH_INTERVAL = 2000;
-  const REPLAY_MAX_PAYLOAD_SIZE = 900000;
+  const REPLAY_MAX_PAYLOAD_SIZE = 950000;
+  const REPLAY_FRAGMENT_TYPE = 'umami:rrweb-event-fragment';
+  const REPLAY_FRAGMENT_TOTAL_PLACEHOLDER = 999999999;
   const HEATMAP_FLUSH_EVENT_COUNT = 20;
   const HEATMAP_FLUSH_INTERVAL = 5000;
 
@@ -41,6 +43,7 @@ import { record } from 'rrweb';
   let replayFlushTimer = null;
   let heatmapFlushTimer = null;
   let replayStartTime = null;
+  let replayLastChunkIndex = 0;
   let replayStopped = false;
   let heatmapStarted = false;
 
@@ -69,6 +72,35 @@ import { record } from 'rrweb';
   const isReplayPayloadTooLarge = (events, timestamp) =>
     getReplayPayloadSize(events, timestamp) > REPLAY_MAX_PAYLOAD_SIZE;
 
+  const getReplayChunkIndex = () => {
+    const timestamp = Math.floor(Date.now() / 1000);
+    const chunkIndex = Math.max(timestamp, replayLastChunkIndex + 1);
+
+    replayLastChunkIndex = chunkIndex;
+
+    return chunkIndex;
+  };
+
+  const createReplayFragment = (id, index, total, timestamp, value) => ({
+    type: REPLAY_FRAGMENT_TYPE,
+    timestamp,
+    data: {
+      id,
+      index,
+      total,
+      value,
+    },
+  });
+
+  const getReplayEventTimestamp = event => {
+    const timestamp = Number(event?.timestamp);
+
+    return Number.isFinite(timestamp) ? timestamp : Date.now();
+  };
+
+  const getReplayFragmentId = () =>
+    `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+
   const sendPayload = (type, payload, useKeepalive = false) => {
     const cache = getSessionCache();
 
@@ -90,45 +122,106 @@ import { record } from 'rrweb';
     }).catch(() => {});
   };
 
+  const sendReplayChunk = (events, timestamp, useKeepalive = false) => {
+    replayLastChunkIndex = Math.max(replayLastChunkIndex, timestamp);
+
+    sendPayload(
+      'record',
+      {
+        events,
+        timestamp,
+      },
+      useKeepalive,
+    );
+  };
+
+  const getReplayEventFragments = (event, chunkTimestamp) => {
+    const value = JSON.stringify(event);
+    const id = getReplayFragmentId();
+    const eventTimestamp = getReplayEventTimestamp(event);
+    const fragments = [];
+    let start = 0;
+
+    while (start < value.length) {
+      let low = start + 1;
+      let high = value.length;
+      let end = start;
+
+      while (low <= high) {
+        const mid = Math.floor((low + high) / 2);
+        const fragmentChunkTimestamp = chunkTimestamp + fragments.length;
+        const fragment = createReplayFragment(
+          id,
+          fragments.length,
+          REPLAY_FRAGMENT_TOTAL_PLACEHOLDER,
+          eventTimestamp,
+          value.slice(start, mid),
+        );
+
+        if (isReplayPayloadTooLarge([fragment], fragmentChunkTimestamp)) {
+          high = mid - 1;
+        } else {
+          end = mid;
+          low = mid + 1;
+        }
+      }
+
+      if (end === start) {
+        end = start + 1;
+      }
+
+      fragments.push(value.slice(start, end));
+      start = end;
+    }
+
+    return fragments.map((fragment, index) =>
+      createReplayFragment(id, index, fragments.length, eventTimestamp, fragment),
+    );
+  };
+
+  const sendReplayEventFragments = (event, timestamp, useKeepalive = false) => {
+    const fragments = getReplayEventFragments(event, timestamp);
+
+    fragments.forEach((fragment, index) => {
+      sendReplayChunk([fragment], timestamp + index, useKeepalive);
+    });
+
+    return fragments.length;
+  };
+
   const sendReplayEvents = (events, timestamp, useKeepalive = false) => {
     let chunk = [];
     let chunkOffset = 0;
 
-    events.forEach(event => {
-      const candidate = [...chunk, event];
+    for (const event of events) {
+      const chunkTimestamp = timestamp + chunkOffset;
 
-      if (isReplayPayloadTooLarge(candidate, timestamp + chunkOffset)) {
+      if (isReplayPayloadTooLarge([event], chunkTimestamp)) {
         if (chunk.length) {
-          sendPayload(
-            'record',
-            {
-              events: chunk,
-              timestamp: timestamp + chunkOffset,
-            },
-            useKeepalive,
-          );
+          sendReplayChunk(chunk, chunkTimestamp, useKeepalive);
           chunk = [];
           chunkOffset += 1;
         }
 
-        if (isReplayPayloadTooLarge([event], timestamp + chunkOffset)) {
+        chunkOffset += sendReplayEventFragments(event, timestamp + chunkOffset, useKeepalive);
+        continue;
+      }
+
+      const candidate = [...chunk, event];
+
+      if (isReplayPayloadTooLarge(candidate, chunkTimestamp)) {
+        if (chunk.length) {
+          sendReplayChunk(chunk, chunkTimestamp, useKeepalive);
+          chunk = [];
           chunkOffset += 1;
-          return;
         }
       }
 
       chunk.push(event);
-    });
+    }
 
     if (chunk.length) {
-      sendPayload(
-        'record',
-        {
-          events: chunk,
-          timestamp: timestamp + chunkOffset,
-        },
-        useKeepalive,
-      );
+      sendReplayChunk(chunk, timestamp + chunkOffset, useKeepalive);
     }
   };
 
@@ -138,7 +231,7 @@ import { record } from 'rrweb';
     const events = replayBuffer;
     replayBuffer = [];
 
-    sendReplayEvents(events, Math.floor(Date.now() / 1000), useKeepalive);
+    sendReplayEvents(events, getReplayChunkIndex(), useKeepalive);
   };
 
   const flushHeatmap = (useKeepalive = false) => {
@@ -326,10 +419,21 @@ import { record } from 'rrweb';
           return;
         }
 
-        if (
-          replayBuffer.length &&
-          isReplayPayloadTooLarge([...replayBuffer, event], Math.floor(Date.now() / 1000))
-        ) {
+        const timestamp = Math.floor(Date.now() / 1000);
+
+        if (isReplayPayloadTooLarge([event], timestamp)) {
+          if (replayBuffer.length) {
+            const events = replayBuffer;
+            replayBuffer = [];
+
+            sendReplayEvents(events, getReplayChunkIndex());
+          }
+
+          sendReplayEvents([event], getReplayChunkIndex());
+          return;
+        }
+
+        if (replayBuffer.length && isReplayPayloadTooLarge([...replayBuffer, event], timestamp)) {
           flushReplay();
         }
 
@@ -359,6 +463,11 @@ import { record } from 'rrweb';
       checkoutEveryNms: 30000,
       ...(blockSelector && { blockSelector }),
     });
+
+    if (replayStopped && replayStopFn) {
+      replayStopFn();
+      replayStopFn = null;
+    }
   };
 
   const beginHeatmapCapture = () => {
