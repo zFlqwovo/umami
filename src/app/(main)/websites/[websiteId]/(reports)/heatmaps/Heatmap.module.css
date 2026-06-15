@@ -168,6 +168,28 @@
   -webkit-user-drag: none;
 }
 
+.snapshotFrame {
+  width: 100%;
+  height: 100%;
+}
+
+.snapshotFrame :global(.replayer-wrapper) {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.snapshotFrame :global(.replayer-mouse),
+.snapshotFrame :global(.replayer-mouse-tail) {
+  display: none !important;
+}
+
+.snapshotFrame :global(iframe) {
+  width: 100% !important;
+  height: 100% !important;
+  border: 0;
+  display: block !important;
+}
+
 .overlay {
   position: absolute;
   top: 0;

@@ -20,6 +20,7 @@ const SNAPSHOT_ERROR_MAX_LENGTH = 500;
 export type HeatmapSnapshotStatus = (typeof SNAPSHOT_STATUS)[keyof typeof SNAPSHOT_STATUS];
 
 export interface HeatmapSnapshotImage {
+  kind: 'image';
   id: string;
   imageUrl: string | null;
   status: HeatmapSnapshotStatus;
@@ -331,6 +332,7 @@ function getSnapshotImageUrl(websiteId: string, snapshotId: string) {
 
 function mapSnapshot(websiteId: string, row: SnapshotRecord): HeatmapSnapshotImage {
   return {
+    kind: 'image',
     id: row.id,
     imageUrl:
       row.status === SNAPSHOT_STATUS.ready && row.hasImage
@@ -599,16 +601,12 @@ function getSnapshotErrorMessage(error: unknown) {
 async function createSnapshotBrowser() {
   const endpoint = process.env.PLAYWRIGHT_URL?.trim();
 
-  if (endpoint) {
-    const { chromium } = await import('playwright-core');
-    return chromium.connect(endpoint);
+  if (!endpoint) {
+    return null;
   }
 
-  const { chromium } = await import('@playwright/test');
-  return chromium.launch({
-    channel: 'chromium',
-    headless: true,
-  });
+  const { chromium } = await import('playwright-core');
+  return chromium.connect(endpoint);
 }
 
 async function captureSnapshot(
@@ -618,6 +616,11 @@ async function captureSnapshot(
   pageW?: number,
 ): Promise<CaptureResult> {
   const browser = await createSnapshotBrowser();
+
+  if (!browser) {
+    throw new Error(SNAPSHOT_UNAVAILABLE_ERROR);
+  }
+
   const initialViewportW = viewportW;
 
   try {
@@ -696,6 +699,10 @@ export async function ensureHeatmapSnapshot({
 
   if (existing?.status === SNAPSHOT_STATUS.ready && existing.hasImage) {
     return mapSnapshot(websiteId, existing);
+  }
+
+  if (!process.env.PLAYWRIGHT_URL?.trim()) {
+    return null;
   }
 
   const updatedAt = existing?.updatedAt ? new Date(existing.updatedAt) : null;
