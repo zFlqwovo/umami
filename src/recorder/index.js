@@ -1,4 +1,4 @@
-import { record } from 'rrweb';
+import { addCustomEvent, record } from 'rrweb';
 
 (window => {
   const { document } = window;
@@ -588,6 +588,10 @@ import { record } from 'rrweb';
       flushScroll();
       scrollUrl = location.href;
       lastFlushedScrollPct = 0;
+
+      if (replayStopFn && !replayStopped) {
+        addCustomEvent('url-change', { url: scrollUrl });
+      }
     };
 
     const hookHistory = method => {

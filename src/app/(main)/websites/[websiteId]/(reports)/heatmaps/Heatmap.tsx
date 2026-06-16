@@ -1,8 +1,8 @@
 'use client';
 import { Column, Grid, Heading, Loading, Row, Switch, Text } from '@umami/react-zen';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LoadingPanel } from '@/components/common/LoadingPanel';
-import { useResultQuery } from '@/components/hooks';
+import { useReplayQuery, useResultQuery } from '@/components/hooks';
 import { getClientAuthToken } from '@/lib/client';
 import { formatLongNumber } from '@/lib/format';
 import type { HeatmapMode, HeatmapPoint, HeatmapResult, HeatmapSnapshot } from '@/queries/sql';
@@ -111,6 +111,7 @@ export function Heatmap({ websiteId, urlPath, onUrlPathChange, mode, search }: H
           {urlPath ? (
             mode === 'scroll' ? (
               <ScrollHeatmapView
+                websiteId={websiteId}
                 urlPath={urlPath}
                 scroll={scroll}
                 snapshot={snapshot}
@@ -118,6 +119,7 @@ export function Heatmap({ websiteId, urlPath, onUrlPathChange, mode, search }: H
               />
             ) : (
               <ClickHeatmapView
+                websiteId={websiteId}
                 urlPath={urlPath}
                 points={points}
                 snapshot={snapshot}
@@ -232,11 +234,13 @@ function pickViewport(points: HeatmapPoint[]): ViewportBucket | null {
 }
 
 function ClickHeatmapView({
+  websiteId,
   urlPath,
   points,
   snapshot,
   isLoading,
 }: {
+  websiteId: string;
   urlPath: string;
   points: HeatmapPoint[];
   snapshot: HeatmapSnapshot | null;
@@ -262,11 +266,11 @@ function ClickHeatmapView({
   );
 
   const handleSnapshotReady = useCallback(() => setSnapshotReady(true), []);
-  const hasSnapshotImage = Boolean(snapshot?.imageUrl);
+  const hasSnapshot = Boolean(snapshot);
 
   useEffect(() => {
-    setSnapshotReady(!(showPage && hasSnapshotImage));
-  }, [hasSnapshotImage, showPage, snapshot?.id]);
+    setSnapshotReady(!(showPage && hasSnapshot));
+  }, [hasSnapshot, showPage, snapshot?.id]);
   const overlayGutter = Math.max(48, Math.round((viewport?.width ?? 1920) * 0.04));
   const maxPointX = visible.reduce((max, point) => Math.max(max, point.pageX), 0);
   const maxPointY = visible.reduce((max, point) => Math.max(max, point.pageY), 0);
@@ -275,10 +279,14 @@ function ClickHeatmapView({
   const renderWidth = snapshot?.pageW ?? baseWidth;
   const renderHeight = snapshot?.pageH ?? baseHeight;
   const hasMeasuredWidth = Boolean(snapshot?.pageW || viewport?.pageW || maxPointX);
-  const canvasWidth = hasMeasuredWidth ? `min(100%, ${renderWidth}px)` : '100%';
+  const canvasWidth = hasMeasuredWidth
+    ? snapshot?.kind === 'replay'
+      ? `${renderWidth}px`
+      : `min(100%, ${renderWidth}px)`
+    : '100%';
   const overlayPageW = snapshot?.pageW ?? viewport?.pageW ?? baseWidth;
   const overlayPageH = snapshot?.pageH ?? viewport?.pageH ?? baseHeight;
-  const showSnapshot = renderWidth > 0 && showPage && hasSnapshotImage;
+  const showSnapshot = renderWidth > 0 && showPage && hasSnapshot;
   const showOverlay = !showSnapshot || snapshotReady;
   const totalClicks = visible.reduce((sum, point) => sum + point.count, 0);
   const showLoading = isLoading;
@@ -313,18 +321,19 @@ function ClickHeatmapView({
         )}
       </Column>
 
-      {showPage && snapshot?.status === 'failed' && (
+      {showPage && snapshot?.kind === 'image' && snapshot.status === 'failed' && (
         <Text color="muted" className={styles.snapshotMessage}>
           {SNAPSHOT_UNAVAILABLE_ERROR}
         </Text>
       )}
 
-      <div className={styles.canvasWrapper}>
+      <div
+        className={`${styles.canvasWrapper} ${snapshot?.kind === 'replay' ? styles.canvasWrapperScrollable : ''}`}
+      >
         <div
           className={styles.canvas}
           style={{
             width: canvasWidth,
-            maxWidth: '100%',
             aspectRatio: `${Math.max(1, renderWidth)} / ${Math.max(1, renderHeight)}`,
           }}
         >
@@ -336,8 +345,12 @@ function ClickHeatmapView({
             <>
               <div className={styles.snapshotClip}>
                 {showSnapshot && !snapshotReady && <CanvasLoading />}
-                {showSnapshot && snapshot?.imageUrl && (
-                  <SnapshotImage snapshot={snapshot} onReady={handleSnapshotReady} />
+                {showSnapshot && snapshot && (
+                  <SnapshotPreview
+                    websiteId={websiteId}
+                    snapshot={snapshot}
+                    onReady={handleSnapshotReady}
+                  />
                 )}
               </div>
               {showOverlay && (
@@ -382,7 +395,7 @@ function ClickHeatmapView({
         </div>
       </div>
 
-      {hasSnapshotImage && (
+      {hasSnapshot && (
         <Row justifyContent="center" className={styles.snapshotControlRow}>
           <Switch isSelected={showPage} onChange={setShowPage}>
             Show page
@@ -394,11 +407,13 @@ function ClickHeatmapView({
 }
 
 function ScrollHeatmapView({
+  websiteId,
   urlPath,
   scroll,
   snapshot,
   isLoading,
 }: {
+  websiteId: string;
   urlPath: string;
   scroll: HeatmapResult['scroll'] | undefined;
   snapshot: HeatmapSnapshot | null;
@@ -407,11 +422,11 @@ function ScrollHeatmapView({
   const [showPage, setShowPage] = useState(true);
   const [snapshotReady, setSnapshotReady] = useState(false);
   const handleSnapshotReady = useCallback(() => setSnapshotReady(true), []);
-  const hasSnapshotImage = Boolean(snapshot?.imageUrl);
+  const hasSnapshot = Boolean(snapshot);
 
   useEffect(() => {
-    setSnapshotReady(!(showPage && hasSnapshotImage));
-  }, [hasSnapshotImage, showPage, snapshot?.id]);
+    setSnapshotReady(!(showPage && hasSnapshot));
+  }, [hasSnapshot, showPage, snapshot?.id]);
   const {
     buckets = [],
     totalSessions = 0,
@@ -425,8 +440,12 @@ function ScrollHeatmapView({
   const renderWidth = snapshot?.pageW ?? baseWidth;
   const renderHeight = snapshot?.pageH ?? baseHeight;
   const hasMeasuredWidth = Boolean(snapshot?.pageW || pageW);
-  const canvasWidth = hasMeasuredWidth ? `min(100%, ${renderWidth}px)` : '100%';
-  const showSnapshot = renderWidth > 0 && showPage && hasSnapshotImage;
+  const canvasWidth = hasMeasuredWidth
+    ? snapshot?.kind === 'replay'
+      ? `${renderWidth}px`
+      : `min(100%, ${renderWidth}px)`
+    : '100%';
+  const showSnapshot = renderWidth > 0 && showPage && hasSnapshot;
   const showOverlay = !showSnapshot || snapshotReady;
   const hasScrollData = Boolean(scroll && totalSessions > 0 && pageW && pageH && viewportW);
   const showLoading = isLoading;
@@ -478,18 +497,19 @@ function ScrollHeatmapView({
         </Row>
       )}
 
-      {showPage && snapshot?.status === 'failed' && (
+      {showPage && snapshot?.kind === 'image' && snapshot.status === 'failed' && (
         <Text color="muted" className={styles.snapshotMessage}>
           {SNAPSHOT_UNAVAILABLE_ERROR}
         </Text>
       )}
 
-      <div className={styles.canvasWrapper}>
+      <div
+        className={`${styles.canvasWrapper} ${snapshot?.kind === 'replay' ? styles.canvasWrapperScrollable : ''}`}
+      >
         <div
           className={styles.canvas}
           style={{
             width: canvasWidth,
-            maxWidth: '100%',
             aspectRatio: `${Math.max(1, renderWidth)} / ${Math.max(1, renderHeight)}`,
           }}
         >
@@ -500,8 +520,12 @@ function ScrollHeatmapView({
           ) : (
             <div className={styles.canvasClip}>
               {showSnapshot && !snapshotReady && <CanvasLoading />}
-              {showSnapshot && snapshot?.imageUrl && (
-                <SnapshotImage snapshot={snapshot} onReady={handleSnapshotReady} />
+              {showSnapshot && snapshot && (
+                <SnapshotPreview
+                  websiteId={websiteId}
+                  snapshot={snapshot}
+                  onReady={handleSnapshotReady}
+                />
               )}
               {showOverlay && (
                 <div className={styles.overlay}>
@@ -536,7 +560,7 @@ function ScrollHeatmapView({
         </div>
       </div>
 
-      {hasSnapshotImage && (
+      {hasSnapshot && (
         <Row justifyContent="center" className={styles.snapshotControlRow}>
           <Switch isSelected={showPage} onChange={setShowPage}>
             Show page
@@ -547,11 +571,28 @@ function ScrollHeatmapView({
   );
 }
 
+function SnapshotPreview({
+  websiteId,
+  snapshot,
+  onReady,
+}: {
+  websiteId: string;
+  snapshot: HeatmapSnapshot;
+  onReady: () => void;
+}) {
+  if (snapshot.kind === 'replay') {
+    return <ReplaySnapshot websiteId={websiteId} snapshot={snapshot} onReady={onReady} />;
+  }
+
+  return <SnapshotImage snapshot={snapshot} onReady={onReady} />;
+}
+
 function SnapshotImage({ snapshot, onReady }: { snapshot: HeatmapSnapshot; onReady: () => void }) {
   const [src, setSrc] = useState<string | null>(null);
+  const imageUrl = snapshot.kind === 'image' ? snapshot.imageUrl : null;
 
   useEffect(() => {
-    if (!snapshot.imageUrl) {
+    if (snapshot.kind !== 'image' || !imageUrl) {
       setSrc(null);
       return;
     }
@@ -562,7 +603,7 @@ function SnapshotImage({ snapshot, onReady }: { snapshot: HeatmapSnapshot; onRea
 
     setSrc(null);
 
-    fetch(snapshot.imageUrl, {
+    fetch(imageUrl, {
       signal: controller.signal,
       headers: {
         ...(token ? { authorization: `Bearer ${token}` } : {}),
@@ -589,7 +630,7 @@ function SnapshotImage({ snapshot, onReady }: { snapshot: HeatmapSnapshot; onRea
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [snapshot.id, snapshot.imageUrl]);
+  }, [imageUrl, onReady, snapshot.id, snapshot.kind]);
 
   const handleLoad = useCallback(() => onReady(), [onReady]);
 
@@ -602,6 +643,95 @@ function SnapshotImage({ snapshot, onReady }: { snapshot: HeatmapSnapshot; onRea
         draggable={false}
         onLoad={handleLoad}
       />
+    </div>
+  );
+}
+
+function ReplaySnapshot({
+  websiteId,
+  snapshot,
+  onReady,
+}: {
+  websiteId: string;
+  snapshot: Extract<HeatmapSnapshot, { kind: 'replay' }>;
+  onReady: () => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const replayerRef = useRef<any>(null);
+  const { data: replay, isLoading } = useReplayQuery(websiteId, snapshot.replayId, {
+    until: snapshot.replayTimeMs ?? undefined,
+    chunkIndex: snapshot.chunkIndex,
+    eventIndex: snapshot.eventIndex,
+  });
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    if (!replay?.events?.length || !containerRef.current) {
+      onReady();
+      return;
+    }
+
+    let cancelled = false;
+
+    import('rrweb')
+      .then(mod => {
+        if (cancelled || !containerRef.current) {
+          return;
+        }
+
+        containerRef.current.innerHTML = '';
+
+        const replayer = new mod.Replayer(replay.events, {
+          root: containerRef.current,
+          loadTimeout: 0,
+          mouseTail: false,
+          pauseAnimation: true,
+          showWarning: false,
+        });
+
+        replayerRef.current = replayer;
+
+        const firstTimestamp = Number(replay.events[0]?.timestamp ?? 0);
+        const lastTimestamp = Number(replay.events[replay.events.length - 1]?.timestamp ?? 0);
+        const timeOffset = Math.max(0, lastTimestamp - firstTimestamp);
+
+        replayer.pause(timeOffset);
+        replayer.wrapper.style.width = '100%';
+        replayer.wrapper.style.height = '100%';
+        replayer.wrapper.style.pointerEvents = 'none';
+        replayer.wrapper.style.overflow = 'hidden';
+        replayer.iframe.style.display = 'block';
+        replayer.iframe.style.width = '100%';
+        replayer.iframe.style.height = '100%';
+        replayer.iframe.style.border = '0';
+        const replayMouse = replayer.wrapper.querySelector<HTMLElement>('.replayer-mouse');
+        const replayMouseTail = replayer.wrapper.querySelector<HTMLCanvasElement>(
+          '.replayer-mouse-tail',
+        );
+        if (replayMouse) {
+          replayMouse.style.display = 'none';
+        }
+        if (replayMouseTail) {
+          replayMouseTail.style.display = 'none';
+        }
+
+        onReady();
+      })
+      .catch(() => onReady());
+
+    return () => {
+      cancelled = true;
+      replayerRef.current?.destroy?.();
+      replayerRef.current = null;
+    };
+  }, [isLoading, onReady, replay?.events, snapshot.id]);
+
+  return (
+    <div className={styles.snapshot}>
+      <div ref={containerRef} className={styles.snapshotFrame} />
     </div>
   );
 }
