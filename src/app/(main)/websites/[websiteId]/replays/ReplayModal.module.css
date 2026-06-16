@@ -1,0 +1,11 @@
+.modal {
+  width: min(calc(100dvw - 48px), 1320px);
+  overflow: hidden;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.sheet {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
