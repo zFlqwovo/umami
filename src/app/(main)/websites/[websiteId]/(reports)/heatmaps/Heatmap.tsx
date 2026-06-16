@@ -279,7 +279,11 @@ function ClickHeatmapView({
   const renderWidth = snapshot?.pageW ?? baseWidth;
   const renderHeight = snapshot?.pageH ?? baseHeight;
   const hasMeasuredWidth = Boolean(snapshot?.pageW || viewport?.pageW || maxPointX);
-  const canvasWidth = hasMeasuredWidth ? `min(100%, ${renderWidth}px)` : '100%';
+  const canvasWidth = hasMeasuredWidth
+    ? snapshot?.kind === 'replay'
+      ? `${renderWidth}px`
+      : `min(100%, ${renderWidth}px)`
+    : '100%';
   const overlayPageW = snapshot?.pageW ?? viewport?.pageW ?? baseWidth;
   const overlayPageH = snapshot?.pageH ?? viewport?.pageH ?? baseHeight;
   const showSnapshot = renderWidth > 0 && showPage && hasSnapshot;
@@ -323,12 +327,13 @@ function ClickHeatmapView({
         </Text>
       )}
 
-      <div className={styles.canvasWrapper}>
+      <div
+        className={`${styles.canvasWrapper} ${snapshot?.kind === 'replay' ? styles.canvasWrapperScrollable : ''}`}
+      >
         <div
           className={styles.canvas}
           style={{
             width: canvasWidth,
-            maxWidth: '100%',
             aspectRatio: `${Math.max(1, renderWidth)} / ${Math.max(1, renderHeight)}`,
           }}
         >
@@ -435,7 +440,11 @@ function ScrollHeatmapView({
   const renderWidth = snapshot?.pageW ?? baseWidth;
   const renderHeight = snapshot?.pageH ?? baseHeight;
   const hasMeasuredWidth = Boolean(snapshot?.pageW || pageW);
-  const canvasWidth = hasMeasuredWidth ? `min(100%, ${renderWidth}px)` : '100%';
+  const canvasWidth = hasMeasuredWidth
+    ? snapshot?.kind === 'replay'
+      ? `${renderWidth}px`
+      : `min(100%, ${renderWidth}px)`
+    : '100%';
   const showSnapshot = renderWidth > 0 && showPage && hasSnapshot;
   const showOverlay = !showSnapshot || snapshotReady;
   const hasScrollData = Boolean(scroll && totalSessions > 0 && pageW && pageH && viewportW);
@@ -494,12 +503,13 @@ function ScrollHeatmapView({
         </Text>
       )}
 
-      <div className={styles.canvasWrapper}>
+      <div
+        className={`${styles.canvasWrapper} ${snapshot?.kind === 'replay' ? styles.canvasWrapperScrollable : ''}`}
+      >
         <div
           className={styles.canvas}
           style={{
             width: canvasWidth,
-            maxWidth: '100%',
             aspectRatio: `${Math.max(1, renderWidth)} / ${Math.max(1, renderHeight)}`,
           }}
         >
@@ -697,6 +707,16 @@ function ReplaySnapshot({
         replayer.iframe.style.width = '100%';
         replayer.iframe.style.height = '100%';
         replayer.iframe.style.border = '0';
+        const replayMouse = replayer.wrapper.querySelector<HTMLElement>('.replayer-mouse');
+        const replayMouseTail = replayer.wrapper.querySelector<HTMLCanvasElement>(
+          '.replayer-mouse-tail',
+        );
+        if (replayMouse) {
+          replayMouse.style.display = 'none';
+        }
+        if (replayMouseTail) {
+          replayMouseTail.style.display = 'none';
+        }
 
         onReady();
       })
