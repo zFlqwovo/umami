@@ -87,10 +87,10 @@ export function SideNav(props: any) {
       <Row
         alignItems="center"
         justifyContent="space-between"
-        height="60px"
+        minHeight="40px"
         style={{ flexShrink: 0 }}
       >
-        <Row paddingX="3" alignItems="center" justifyContent="space-between" flexGrow="1">
+        <Row padding="3" alignItems="center" justifyContent="space-between" flexGrow="1">
           {!isCollapsed && (
             <IconLabel icon={<Logo />}>
               <Text weight="bold">umami</Text>

@@ -18,6 +18,7 @@ export function ReplayModal({ websiteId, replayId, className, ...props }: Replay
     updateParams,
   } = useNavigation();
   const activeReplayId = replayId || replay;
+  const modalClassName = [styles.modal, className].filter(Boolean).join(' ');
 
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
@@ -37,7 +38,7 @@ export function ReplayModal({ websiteId, replayId, className, ...props }: Replay
       {...props}
       placement="bottom"
       offset="80px"
-      className={[styles.modal, className].filter(Boolean).join(' ')}
+      className={modalClassName}
       isOpen={!!activeReplayId}
       onOpenChange={handleOpenChange}
       isDismissable
