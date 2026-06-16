@@ -23,9 +23,12 @@ import { record } from 'rrweb';
 
   const REPLAY_FLUSH_EVENT_COUNT = 100;
   const REPLAY_FLUSH_INTERVAL = 2000;
-  const REPLAY_MAX_PAYLOAD_SIZE = 950000;
+  const REPLAY_MAX_PAYLOAD_SIZE = 500000;
   const REPLAY_FRAGMENT_TYPE = 'umami:rrweb-event-fragment';
   const REPLAY_FRAGMENT_TOTAL_PLACEHOLDER = 999999999;
+  const RRWEB_EVENT_TYPE = {
+    FullSnapshot: 2,
+  };
   const HEATMAP_FLUSH_EVENT_COUNT = 20;
   const HEATMAP_FLUSH_INTERVAL = 5000;
 
@@ -100,6 +103,8 @@ import { record } from 'rrweb';
 
   const getReplayFragmentId = () =>
     `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+
+  const isReplayFullSnapshot = event => event?.type === RRWEB_EVENT_TYPE.FullSnapshot;
 
   const sendPayload = (type, payload, useKeepalive = false) => {
     const cache = getSessionCache();
@@ -195,6 +200,25 @@ import { record } from 'rrweb';
 
     for (const event of events) {
       const chunkTimestamp = timestamp + chunkOffset;
+
+      if (isReplayFullSnapshot(event)) {
+        if (chunk.length) {
+          sendReplayChunk(chunk, chunkTimestamp, useKeepalive);
+          chunk = [];
+          chunkOffset += 1;
+        }
+
+        const snapshotTimestamp = timestamp + chunkOffset;
+
+        if (isReplayPayloadTooLarge([event], snapshotTimestamp)) {
+          chunkOffset += sendReplayEventFragments(event, snapshotTimestamp, useKeepalive);
+        } else {
+          sendReplayChunk([event], snapshotTimestamp, useKeepalive);
+          chunkOffset += 1;
+        }
+
+        continue;
+      }
 
       if (isReplayPayloadTooLarge([event], chunkTimestamp)) {
         if (chunk.length) {
@@ -416,6 +440,12 @@ import { record } from 'rrweb';
 
         if (Date.now() - replayStartTime > maxDuration) {
           stopReplay();
+          return;
+        }
+
+        if (isReplayFullSnapshot(event)) {
+          flushReplay();
+          sendReplayEvents([event], getReplayChunkIndex());
           return;
         }
 
