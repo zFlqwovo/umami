@@ -2,21 +2,32 @@
 import { Column, Dialog, Modal, type ModalProps } from '@umami/react-zen';
 import { ReplayPlayback } from '@/app/(main)/websites/[websiteId]/replays/[replayId]/ReplayPlayback';
 import { useNavigation } from '@/components/hooks';
+import { buildPath } from '@/lib/url';
 
 export interface ReplayModalProps extends ModalProps {
   websiteId: string;
+  replayId?: string;
 }
 
-export function ReplayModal({ websiteId, ...props }: ReplayModalProps) {
+export function ReplayModal({ websiteId, replayId, ...props }: ReplayModalProps) {
   const {
     router,
     query: { replay },
+    searchParams,
     updateParams,
   } = useNavigation();
+  const activeReplayId = replayId || replay;
 
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
-      router.push(updateParams({ replay: undefined }));
+      if (replayId) {
+        const query = Object.fromEntries(searchParams.entries());
+        delete query.replay;
+
+        router.push(buildPath(`/websites/${websiteId}/replays`, query));
+      } else {
+        router.push(updateParams({ replay: undefined }));
+      }
     }
   };
 
@@ -24,7 +35,7 @@ export function ReplayModal({ websiteId, ...props }: ReplayModalProps) {
     <Modal
       placement="bottom"
       offset="80px"
-      isOpen={!!replay}
+      isOpen={!!activeReplayId}
       onOpenChange={handleOpenChange}
       isDismissable
       {...props}
@@ -33,7 +44,9 @@ export function ReplayModal({ websiteId, ...props }: ReplayModalProps) {
         <Dialog variant="sheet">
           {({ close }) => (
             <Column padding="6">
-              <ReplayPlayback websiteId={websiteId} replayId={replay} onClose={close} />
+              {activeReplayId && (
+                <ReplayPlayback websiteId={websiteId} replayId={activeReplayId} onClose={close} />
+              )}
             </Column>
           )}
         </Dialog>

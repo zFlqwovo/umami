@@ -113,7 +113,7 @@
     "redis": "^5.12.1",
     "request-ip": "^3.3.0",
     "rrweb": "^2.0.1",
-    "rrweb-player": "^2.0.1",
+    "rrweb-player": "2.0.0-alpha.20",
     "semver": "^7.8.4",
     "serialize-error": "^13.0.1",
     "thenby": "^1.4.1",
