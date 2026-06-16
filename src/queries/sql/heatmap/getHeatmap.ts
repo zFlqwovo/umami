@@ -9,6 +9,7 @@ import {
   type HeatmapSnapshotImage,
   shouldSkipSnapshot,
 } from './ensureHeatmapSnapshot';
+import { getHeatmapReplayPreview } from './getHeatmapReplayPreview';
 
 const FUNCTION_NAME = 'getHeatmap';
 
@@ -47,7 +48,20 @@ export interface HeatmapScrollBucket {
   sessions: number;
 }
 
-export type HeatmapSnapshot = HeatmapSnapshotImage;
+export interface HeatmapSnapshotReplay {
+  kind: 'replay';
+  id: string;
+  replayId: string;
+  chunkIndex: number;
+  eventIndex: number;
+  replayTimeMs: number | null;
+  pageW: number;
+  pageH: number;
+  viewportW: number;
+  viewportH: number;
+}
+
+export type HeatmapSnapshot = HeatmapSnapshotImage | HeatmapSnapshotReplay;
 
 export interface HeatmapResult {
   mode: HeatmapMode;
@@ -194,7 +208,7 @@ async function relationalQuery(
       viewportW: dim?.viewportW ?? null,
       viewportH: dim?.viewportH ?? null,
     };
-    const snapshot = await ensureHeatmapSnapshot({
+    const snapshot = await resolveHeatmapSnapshot({
       websiteId,
       urlPath,
       viewportW: scroll.viewportW,
@@ -258,7 +272,7 @@ async function relationalQuery(
   );
 
   const viewport = pickSnapshotViewport(rawPoints);
-  const snapshot = await ensureHeatmapSnapshot({
+  const snapshot = await resolveHeatmapSnapshot({
     websiteId,
     urlPath,
     viewportW: viewport?.width ?? null,
@@ -508,6 +522,52 @@ function emptyScroll(): HeatmapResult['scroll'] {
     viewportW: null,
     viewportH: null,
   };
+}
+
+async function resolveHeatmapSnapshot({
+  websiteId,
+  urlPath,
+  viewportW,
+  viewportH,
+  pageW,
+  pageH,
+}: {
+  websiteId: string;
+  urlPath: string;
+  viewportW: number | null;
+  viewportH: number | null;
+  pageW: number | null;
+  pageH: number | null;
+}): Promise<HeatmapSnapshot | null> {
+  if (process.env.PLAYWRIGHT_URL?.trim()) {
+    return ensureHeatmapSnapshot({
+      websiteId,
+      urlPath,
+      viewportW,
+      viewportH,
+      pageW,
+      pageH,
+    });
+  }
+
+  const replayPreview = await getHeatmapReplayPreview(websiteId, urlPath, viewportW, viewportH);
+
+  if (replayPreview && pageW && pageH) {
+    return {
+      kind: 'replay',
+      id: replayPreview.id,
+      replayId: replayPreview.replayId,
+      chunkIndex: replayPreview.chunkIndex,
+      eventIndex: replayPreview.eventIndex,
+      replayTimeMs: replayPreview.replayTimeMs,
+      pageW,
+      pageH,
+      viewportW: replayPreview.viewportW,
+      viewportH: replayPreview.viewportH,
+    };
+  }
+
+  return null;
 }
 
 function pickSnapshotViewport(
