@@ -4,6 +4,10 @@ import type { Filter, Operator, PropertyFilter, QueryFilters, QueryOptions } fro
 const VALID_OPERATORS: Operator[] = Object.values(OPERATORS);
 const VALID_EVENT_DATA_TYPES = Object.values(DATA_TYPE);
 
+function isValidEventDataType(value: number): value is (typeof VALID_EVENT_DATA_TYPES)[number] {
+  return VALID_EVENT_DATA_TYPES.includes(value as (typeof VALID_EVENT_DATA_TYPES)[number]);
+}
+
 function resolveOperator(value?: string): Operator | undefined {
   if (!value) {
     return undefined;
@@ -126,7 +130,7 @@ export function parsePropertyFilters(
 
     if (
       !operator ||
-      (explicitDataType !== undefined && !VALID_EVENT_DATA_TYPES.includes(explicitDataType))
+      (explicitDataType !== undefined && !isValidEventDataType(explicitDataType))
     ) {
       return [];
     }

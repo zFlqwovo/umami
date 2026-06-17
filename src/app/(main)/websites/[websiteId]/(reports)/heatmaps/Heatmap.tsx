@@ -269,8 +269,8 @@ function ClickHeatmapView({
   const hasSnapshot = Boolean(snapshot);
 
   useEffect(() => {
-    setSnapshotReady(!(showPage && hasSnapshot));
-  }, [hasSnapshot, showPage, snapshot?.id]);
+    setSnapshotReady(!hasSnapshot);
+  }, [hasSnapshot, snapshot?.id]);
   const overlayGutter = Math.max(48, Math.round((viewport?.width ?? 1920) * 0.04));
   const maxPointX = visible.reduce((max, point) => Math.max(max, point.pageX), 0);
   const maxPointY = visible.reduce((max, point) => Math.max(max, point.pageY), 0);
@@ -425,8 +425,8 @@ function ScrollHeatmapView({
   const hasSnapshot = Boolean(snapshot);
 
   useEffect(() => {
-    setSnapshotReady(!(showPage && hasSnapshot));
-  }, [hasSnapshot, showPage, snapshot?.id]);
+    setSnapshotReady(!hasSnapshot);
+  }, [hasSnapshot, snapshot?.id]);
   const {
     buckets = [],
     totalSessions = 0,

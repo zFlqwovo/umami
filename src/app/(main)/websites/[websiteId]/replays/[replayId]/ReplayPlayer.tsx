@@ -8,6 +8,21 @@ import 'rrweb-player/dist/style.css';
 
 const DEFAULT_REPLAY_ASPECT_RATIO = 9 / 16;
 
+function destroyReplayPlayer(player: { $destroy?: () => void } | null) {
+  if (!player) {
+    return;
+  }
+
+  try {
+    player.$destroy?.();
+  } catch (error) {
+    // rrweb-player alpha teardown can throw after it loses its inner replayer instance.
+    if (!(error instanceof TypeError) || !error.message.includes('pause is not a function')) {
+      throw error;
+    }
+  }
+}
+
 export function ReplayPlayer({ events }: { events: any[] }) {
   const playerRootRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
@@ -34,7 +49,7 @@ export function ReplayPlayer({ events }: { events: any[] }) {
     setPlayerError(false);
 
     if (playerRef.current) {
-      playerRef.current.$destroy?.();
+      destroyReplayPlayer(playerRef.current);
       playerRef.current = null;
     }
 
@@ -89,7 +104,7 @@ export function ReplayPlayer({ events }: { events: any[] }) {
       cancelled = true;
 
       if (playerRef.current) {
-        playerRef.current.$destroy?.();
+        destroyReplayPlayer(playerRef.current);
         playerRef.current = null;
       }
 

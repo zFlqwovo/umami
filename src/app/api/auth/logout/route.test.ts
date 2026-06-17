@@ -20,7 +20,7 @@ vi.mock('@/lib/response', () => ({
   ok: () => new Response(null, { status: 200 }),
 }));
 
-const redisMock = redis as {
+const redisMock = redis as unknown as {
   enabled: boolean;
   client: {
     del: ReturnType<typeof vi.fn>;
