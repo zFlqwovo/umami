@@ -103,6 +103,7 @@
     "download": "Unduh",
     "dropoff": "Penurunan",
     "duration": "Durasi",
+    "min-duration-seconds": "Durasi minimum (detik)",
     "edit": "Sunting",
     "edit-member": "Sunting anggota",
     "email": "Email",
@@ -430,6 +431,7 @@
     "triggered-event": "Peristiwa terjadi",
     "unauthorized": "Tidak diotorisasi",
     "user-deleted": "Pengguna telah dihapus.",
+    "replay-min-duration-description": "Hanya tampilkan ulangan dengan durasi ini atau lebih.",
     "viewed-page": "Halaman dilihat",
     "upgrade-required": "Fitur ini memerlukan langganan paket {plan}.",
     "visitor-log": "Pengunjung dari <b>{country}</b> dengan <b>{browser}</b> di <b>{device}</b> <b>{os}</b>"

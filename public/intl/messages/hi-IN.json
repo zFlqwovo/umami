@@ -102,6 +102,7 @@
     "download": "डाउनलोड",
     "dropoff": "ड्रॉपऑफ",
     "duration": "अवधि",
+    "min-duration-seconds": "न्यूनतम अवधि (सेकंड)",
     "edit": "संपादित करें",
     "edit-member": "सदस्य संपादित करें",
     "email": "ईमेल",
@@ -419,6 +420,7 @@
     "triggered-event": "ट्रिगर किया गया ईवेंट",
     "unauthorized": "अनधिकृत",
     "user-deleted": "उपयोगकर्ता हटाया गया।",
+    "replay-min-duration-description": "केवल इस अवधि या उससे अधिक की रिप्ले दिखाएं।",
     "viewed-page": "देखा गया पेज",
     "visitor-log": "<b>{country}</b> का आगंतुक, जो <b>{browser}</b> का उपयोग करता है, <b>{os}</b> यन्त्र पर"
   }

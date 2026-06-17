@@ -286,8 +286,9 @@ function ClickHeatmapView({
     : '100%';
   const overlayPageW = snapshot?.pageW ?? viewport?.pageW ?? baseWidth;
   const overlayPageH = snapshot?.pageH ?? viewport?.pageH ?? baseHeight;
-  const showSnapshot = renderWidth > 0 && showPage && hasSnapshot;
-  const showOverlay = !showSnapshot || snapshotReady;
+  const shouldRenderSnapshot = renderWidth > 0 && hasSnapshot;
+  const showSnapshot = shouldRenderSnapshot && showPage;
+  const showOverlay = !showPage || !shouldRenderSnapshot || snapshotReady;
   const totalClicks = visible.reduce((sum, point) => sum + point.count, 0);
   const showLoading = isLoading;
 
@@ -345,12 +346,14 @@ function ClickHeatmapView({
             <>
               <div className={styles.snapshotClip}>
                 {showSnapshot && !snapshotReady && <CanvasLoading />}
-                {showSnapshot && snapshot && (
-                  <SnapshotPreview
-                    websiteId={websiteId}
-                    snapshot={snapshot}
-                    onReady={handleSnapshotReady}
-                  />
+                {shouldRenderSnapshot && snapshot && (
+                  <div hidden={!showPage}>
+                    <SnapshotPreview
+                      websiteId={websiteId}
+                      snapshot={snapshot}
+                      onReady={handleSnapshotReady}
+                    />
+                  </div>
                 )}
               </div>
               {showOverlay && (
@@ -445,8 +448,9 @@ function ScrollHeatmapView({
       ? `${renderWidth}px`
       : `min(100%, ${renderWidth}px)`
     : '100%';
-  const showSnapshot = renderWidth > 0 && showPage && hasSnapshot;
-  const showOverlay = !showSnapshot || snapshotReady;
+  const shouldRenderSnapshot = renderWidth > 0 && hasSnapshot;
+  const showSnapshot = shouldRenderSnapshot && showPage;
+  const showOverlay = !showPage || !shouldRenderSnapshot || snapshotReady;
   const hasScrollData = Boolean(scroll && totalSessions > 0 && pageW && pageH && viewportW);
   const showLoading = isLoading;
 
@@ -520,12 +524,14 @@ function ScrollHeatmapView({
           ) : (
             <div className={styles.canvasClip}>
               {showSnapshot && !snapshotReady && <CanvasLoading />}
-              {showSnapshot && snapshot && (
-                <SnapshotPreview
-                  websiteId={websiteId}
-                  snapshot={snapshot}
-                  onReady={handleSnapshotReady}
-                />
+              {shouldRenderSnapshot && snapshot && (
+                <div hidden={!showPage}>
+                  <SnapshotPreview
+                    websiteId={websiteId}
+                    snapshot={snapshot}
+                    onReady={handleSnapshotReady}
+                  />
+                </div>
               )}
               {showOverlay && (
                 <div className={styles.overlay}>

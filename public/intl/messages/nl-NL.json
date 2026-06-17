@@ -103,6 +103,7 @@
     "download": "Downloaden",
     "dropoff": "Uitval",
     "duration": "Duur",
+    "min-duration-seconds": "Minimale duur (seconden)",
     "edit": "Bewerken",
     "edit-member": "Gebruiker aanpassen",
     "email": "E-mail",
@@ -430,6 +431,7 @@
     "triggered-event": "Getriggerde gebeurtenis",
     "unauthorized": "Niet geautoriseerd",
     "user-deleted": "Gebruiker verwijderd",
+    "replay-min-duration-description": "Toon alleen herhalingen met deze of een langere duur.",
     "viewed-page": "Bekeken pagina",
     "upgrade-required": "Deze functie vereist een {plan}-abonnement.",
     "visitor-log": "Bezoeker uit <b>{country}</b> met <b>{browser}</b> op een <b>{os}</b> <b>{device}</b>"

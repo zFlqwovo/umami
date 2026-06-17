@@ -103,6 +103,7 @@
     "download": "Pobierz",
     "dropoff": "Odpływ",
     "duration": "Czas trwania",
+    "min-duration-seconds": "Minimalny czas trwania (sekundy)",
     "edit": "Edytuj",
     "edit-member": "Edytuj członka",
     "email": "E-mail",
@@ -430,6 +431,7 @@
     "triggered-event": "Zdarzenie wyzwalające",
     "unauthorized": "Brak autoryzacji",
     "user-deleted": "Użytkownik usunięty.",
+    "replay-min-duration-description": "Pokazuj tylko nagrania o tej lub dłuższej długości.",
     "viewed-page": "Obejrzana strona",
     "upgrade-required": "Ta funkcja wymaga subskrypcji planu {plan}.",
     "visitor-log": "Odwiedzający z <b>{country}</b> używa <b>{browser}</b> na <b>{os}</b> <b>{device}</b>"

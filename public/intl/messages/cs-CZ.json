@@ -103,6 +103,7 @@
     "download": "Stáhnout",
     "dropoff": "Opuštění",
     "duration": "Trvání",
+    "min-duration-seconds": "Minimální délka (sekundy)",
     "edit": "Upravit",
     "edit-member": "Upravit člena",
     "email": "E-mail",
@@ -430,6 +431,7 @@
     "triggered-event": "Spuštěná událost",
     "unauthorized": "Neautorizováno",
     "user-deleted": "Uživatel smazán.",
+    "replay-min-duration-description": "Zobrazit pouze záznamy s touto nebo delší délkou.",
     "viewed-page": "Zobrazená stránka",
     "upgrade-required": "Tato funkce vyžaduje předplatné plánu {plan}.",
     "visitor-log": "Návštěvník z <b>{country}</b> s prohlížečem <b>{browser}</b> na <b>{os}</b> <b>{device}</b>"

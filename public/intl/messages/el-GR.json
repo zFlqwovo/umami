@@ -102,6 +102,7 @@
     "download": "Λήψη",
     "dropoff": "Εγκατάλειψη",
     "duration": "Διάρκεια",
+    "min-duration-seconds": "Ελάχιστη διάρκεια (δευτερόλεπτα)",
     "edit": "Επεξεργασία",
     "edit-member": "Επεξεργασία μέλους",
     "email": "Email",
@@ -419,6 +420,7 @@
     "triggered-event": "Ενεργοποιημένο συμβάν",
     "unauthorized": "Μη εξουσιοδοτημένο",
     "user-deleted": "Ο χρήστης διαγράφηκε.",
+    "replay-min-duration-description": "Εμφάνιση μόνο αναπαραγωγών με αυτή ή μεγαλύτερη διάρκεια.",
     "viewed-page": "Προβολή σελίδας",
     "visitor-log": "Επισκέπτης από <b>{country}</b> χρησιμοποιώντας <b>{browser}</b> σε <b>{os}</b> <b>{device}</b>"
   }

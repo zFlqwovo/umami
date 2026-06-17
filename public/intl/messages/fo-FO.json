@@ -103,6 +103,7 @@
     "download": "Tak niður",
     "dropoff": "Fráfall",
     "duration": "Tíðarlongd",
+    "min-duration-seconds": "Lágmarkslongd (sekund)",
     "edit": "Ger broyting",
     "edit-member": "Ritstjórna lim",
     "email": "Teldupostur",
@@ -430,6 +431,7 @@
     "triggered-event": "Avbjóðað hending",
     "unauthorized": "Ikki góðkent",
     "user-deleted": "Brúkari strikaður.",
+    "replay-min-duration-description": "Vís bert endurspælingar við hesa ella longri longd.",
     "viewed-page": "Síð vís",
     "upgrade-required": "Hesin virknisháttur krevur eitt {plan}-lyftirtak.",
     "visitor-log": "Vitjandi frá <b>{country}</b> brúkar <b>{browser}</b> á <b>{os}</b> <b>{device}</b>"

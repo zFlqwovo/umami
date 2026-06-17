@@ -104,6 +104,7 @@
     "download": "Télécharger",
     "dropoff": "Abandons",
     "duration": "Durée",
+    "min-duration-seconds": "Durée minimale (secondes)",
     "edit": "Modifier",
     "edit-member": "Modifier le membre",
     "email": "E-mail",
@@ -431,6 +432,7 @@
     "unauthorized": "Non authorisé!",
     "upgrade-required": "Cette fonctionnalité nécessite un abonnement {plan}.",
     "user-deleted": "Utilisateur supprimé.",
+    "replay-min-duration-description": "Afficher uniquement les lectures de cette durée ou plus.",
     "viewed-page": "Page vue",
     "visitor-log": "Visiteur de <b>{country}</b> utilisant <b>{browser}</b> sur <b>{os}</b> <b>{device}</b>"
   }

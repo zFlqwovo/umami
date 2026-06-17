@@ -103,6 +103,7 @@
     "download": "Atsisiųsti",
     "dropoff": "Atsitraukimas",
     "duration": "Trukmė",
+    "min-duration-seconds": "Minimali trukmė (sekundės)",
     "edit": "Redaguoti",
     "edit-member": "Redaguoti narį",
     "email": "El. paštas",
@@ -430,6 +431,7 @@
     "triggered-event": "Suaktyvintas įvykis",
     "unauthorized": "Neautorizuota",
     "user-deleted": "Vartotojas ištrintas.",
+    "replay-min-duration-description": "Rodyti tik atkūrimus su šia arba didesne trukme.",
     "viewed-page": "Peržiūrėtas puslapis",
     "upgrade-required": "Šiai funkcijai reikalinga {plan} plano prenumerata.",
     "visitor-log": "Lankytojas iš <b>{country}</b>, naudojantis <b>{browser}</b> sistemoje <b>{os}</b> <b>{device}</b>"

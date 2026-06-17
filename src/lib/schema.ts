@@ -74,6 +74,10 @@ export const searchParams = {
   search: z.string().optional(),
 };
 
+export const replayParams = {
+  minDuration: z.coerce.number().int().nonnegative().optional(),
+};
+
 export const pagingParams = {
   page: z.coerce.number().int().positive().optional(),
   pageSize: z.coerce.number().int().positive().optional(),

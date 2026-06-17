@@ -124,6 +124,7 @@ export interface QueryFilters
     SortParams,
     PageParams,
     SegmentParams {
+  minDuration?: number;
   cohortFilters?: QueryFilters;
 }
 
