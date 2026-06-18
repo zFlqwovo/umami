@@ -1,10 +1,13 @@
 import clickhouse from '@/lib/clickhouse';
-import { EVENT_COLUMNS, EVENT_TYPE } from '@/lib/constants';
+import { EVENT_COLUMNS, EVENT_TYPE, FILTER_COLUMNS } from '@/lib/constants';
 import { CLICKHOUSE, PRISMA, runQuery } from '@/lib/db';
 import prisma from '@/lib/prisma';
 import type { QueryFilters } from '@/lib/types';
 
 const FUNCTION_NAME = 'getWebsiteSessions';
+const QUALIFIED_FILTER_COLUMNS = Object.fromEntries(
+  Object.entries(FILTER_COLUMNS).map(([key, value]) => [key, `website_event.${value}`]),
+);
 
 export async function getWebsiteSessions(...args: [websiteId: string, filters: QueryFilters]) {
   return runQuery({
@@ -81,18 +84,27 @@ async function relationalQuery(websiteId: string, filters: QueryFilters) {
 async function clickhouseQuery(websiteId: string, filters: QueryFilters) {
   const { pagedRawQuery, parseFilters, getDateStringSQL } = clickhouse;
   const { search } = filters;
-  const { filterQuery, dateQuery, cohortQuery, queryParams } = parseFilters({
-    ...filters,
-    websiteId,
-  });
+  const { filterQuery, dateQuery, cohortQuery, queryParams } = parseFilters(
+    {
+      ...filters,
+      websiteId,
+    },
+    {
+      columns: QUALIFIED_FILTER_COLUMNS,
+    },
+  );
 
   const searchQuery = search
-    ? `and ((positionCaseInsensitive(distinct_id, {search:String}) > 0)
-           or (positionCaseInsensitive(city, {search:String}) > 0)
-           or (positionCaseInsensitive(browser, {search:String}) > 0)
-           or (positionCaseInsensitive(os, {search:String}) > 0)
-           or (positionCaseInsensitive(device, {search:String}) > 0))`
+    ? `and ((positionCaseInsensitive(website_event.distinct_id, {search:String}) > 0)
+           or (positionCaseInsensitive(website_event.city, {search:String}) > 0)
+           or (positionCaseInsensitive(website_event.browser, {search:String}) > 0)
+           or (positionCaseInsensitive(website_event.os, {search:String}) > 0)
+           or (positionCaseInsensitive(website_event.device, {search:String}) > 0))`
     : '';
+  const normalizedFilterQuery = filterQuery.replace(
+    /referrer_domain != hostname/g,
+    'website_event.referrer_domain != website_event.hostname',
+  );
 
   let sql = '';
 
@@ -121,7 +133,7 @@ async function clickhouseQuery(websiteId: string, filters: QueryFilters) {
     where website_id = {websiteId:UUID}
       and event_type != ${EVENT_TYPE.performance}
     ${dateQuery}
-    ${filterQuery}
+    ${normalizedFilterQuery}
     ${searchQuery}
     group by session_id
     order by lastAt desc
@@ -151,7 +163,7 @@ async function clickhouseQuery(websiteId: string, filters: QueryFilters) {
     where website_id = {websiteId:UUID}
       and event_type != ${EVENT_TYPE.performance}
     ${dateQuery}
-    ${filterQuery}
+    ${normalizedFilterQuery}
     ${searchQuery}
     group by session_id
     order by lastAt desc
