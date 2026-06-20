@@ -103,6 +103,7 @@
     "download": "Descarregar",
     "dropoff": "Abandonament",
     "duration": "Durada",
+    "min-duration-seconds": "Durada mínima (segons)",
     "edit": "Edita",
     "edit-member": "Edita membre",
     "email": "Correu electrònic",
@@ -430,6 +431,7 @@
     "triggered-event": "Esdeveniment desencadenat",
     "unauthorized": "No autoritzat",
     "user-deleted": "Usuari eliminat.",
+    "replay-min-duration-description": "Mostra només les reproduccions amb aquesta durada o superior.",
     "viewed-page": "Pàgina vista",
     "upgrade-required": "Aquesta funció requereix una subscripció al pla {plan}.",
     "visitor-log": "Visitant de <b>{country}</b> usant <b>{browser}</b> a <b>{os}</b> <b>{device}</b>"

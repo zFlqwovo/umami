@@ -102,6 +102,7 @@
     "download": "Изтегляне",
     "dropoff": "Отпадане",
     "duration": "Продължителност",
+    "min-duration-seconds": "Минимална продължителност (секунди)",
     "edit": "Редактирай",
     "edit-member": "Редактирай член",
     "email": "Имейл",
@@ -419,6 +420,7 @@
     "triggered-event": "Активирано събитие",
     "unauthorized": "Неоторизиран достъп",
     "user-deleted": "Потребителят е изтрит.",
+    "replay-min-duration-description": "Показвай само записи с тази или по-голяма продължителност.",
     "viewed-page": "Страницата е видяна",
     "visitor-log": "Посетител от <b>{country}</b>, използващ <b>{browser}</b> на <b>{os}</b> <b>{device}</b>"
   }

@@ -103,6 +103,7 @@
     "download": "Herunterladen",
     "dropoff": "Absprung",
     "duration": "Dauer",
+    "min-duration-seconds": "Mindestdauer (Sekunden)",
     "edit": "Bearbeite",
     "edit-member": "Mitglied bearbeite",
     "email": "E-Mail",
@@ -430,6 +431,7 @@
     "triggered-event": "Usglösts Ereigniss",
     "unauthorized": "Nicht autorisiert",
     "user-deleted": "Bnutzer glöscht.",
+    "replay-min-duration-description": "Nur Wiedergaben mit dieser oder längerer Dauer anzeigen.",
     "viewed-page": "Siite agluegt",
     "upgrade-required": "Diese Funktion erfordert ein {plan}-Abonnement.",
     "visitor-log": "Bsuecher us <b>{country}</b> nutzt <b>{browser}</b> uf <b>{os}</b> <b>{device}</b>"

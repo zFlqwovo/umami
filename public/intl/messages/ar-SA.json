@@ -102,6 +102,7 @@
     "download": "تحميل",
     "dropoff": "إنزال",
     "duration": "المدة",
+    "min-duration-seconds": "الحد الأدنى للمدة (ثواني)",
     "edit": "تعديل",
     "edit-member": "عدّل العضو",
     "email": "بريد إلكتروني",
@@ -419,6 +420,7 @@
     "triggered-event": "أُطلق الحدث",
     "unauthorized": "غير مصرح",
     "user-deleted": "تم حذف المستخدم.",
+    "replay-min-duration-description": "إظهار التسجيلات ذات المدة الأطول أو المساوية لهذه المدة فقط.",
     "viewed-page": "شوهدت الصفحة",
     "visitor-log": "زائر من <b>{country}</b> يستخدم <b>{browser}</b> على <b>{os}</b> <b>{device}</b>"
   }

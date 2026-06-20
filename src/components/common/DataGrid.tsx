@@ -111,7 +111,11 @@ export function DataGrid({
             placeholder={t(labels.search)}
           />
         )}
-        <Row alignItems="center" gap style={{ marginLeft: 'auto' }}>
+        <Row
+          alignItems="center"
+          gap
+          style={isMobile ? { width: '100%', justifyContent: 'flex-start' } : { marginLeft: 'auto' }}
+        >
           {renderActions?.()}
           {!isMobile && viewToggleButton}
         </Row>

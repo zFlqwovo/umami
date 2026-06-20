@@ -102,6 +102,7 @@
     "download": "ダウンロード",
     "dropoff": "切り捨て",
     "duration": "継続時間",
+    "min-duration-seconds": "最小時間（秒）",
     "edit": "編集",
     "edit-member": "メンバーの編集",
     "email": "メール",
@@ -419,6 +420,7 @@
     "triggered-event": "トリガーされたイベント",
     "unauthorized": "認証が必要です",
     "user-deleted": "ユーザーが削除されました。",
+    "replay-min-duration-description": "この時間以上の再生のみ表示します。",
     "viewed-page": "閲覧されたページ",
     "visitor-log": "<b>{os}</b>(<b>{device}</b>)で<b>{browser}</b>を使用している<b>{country}</b>からの訪問者"
   }

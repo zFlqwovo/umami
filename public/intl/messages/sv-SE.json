@@ -103,6 +103,7 @@
     "download": "Ladda ner",
     "dropoff": "Bortfall",
     "duration": "Varaktighet",
+    "min-duration-seconds": "Minsta varaktighet (sekunder)",
     "edit": "Redigera",
     "edit-member": "Redigera medlem",
     "email": "E-post",
@@ -430,6 +431,7 @@
     "triggered-event": "Utlöst händelse",
     "unauthorized": "Inte auktoriserad",
     "user-deleted": "Användaren har raderats.",
+    "replay-min-duration-description": "Visa bara uppspelningar med den här varaktigheten eller längre.",
     "viewed-page": "Visad sida",
     "upgrade-required": "Den här funktionen kräver en {plan}-prenumeration.",
     "visitor-log": "Besökare från <b>{country}</b> med <b>{browser}</b> på <b>{os}</b> <b>{device}</b>"

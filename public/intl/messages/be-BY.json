@@ -102,6 +102,7 @@
     "download": "Спампаваць",
     "dropoff": "Адмовы",
     "duration": "Працягласць",
+    "min-duration-seconds": "Мінімальная працягласць (секунды)",
     "edit": "Змяніць",
     "edit-member": "Рэдагаваць удзельніка",
     "email": "Электронная пошта",
@@ -419,6 +420,7 @@
     "triggered-event": "Падзея якая спрацавала",
     "unauthorized": "Не аўтарызаваны",
     "user-deleted": "Карыстальнік выдалены.",
+    "replay-min-duration-description": "Паказваць толькі паўторы з такой або большай працягласцю.",
     "viewed-page": "Праглядзеў старонку",
     "visitor-log": "Наведвальнік з <b>{country}</b> праз <b>{browser}</b> на <b>{os}</b> <b>{device}</b>"
   }

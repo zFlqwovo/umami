@@ -103,6 +103,7 @@
     "download": "Descarcă",
     "dropoff": "Rată de abandon",
     "duration": "Durată",
+    "min-duration-seconds": "Durată minimă (secunde)",
     "edit": "Editare",
     "edit-member": "Editare membru",
     "email": "Email",
@@ -430,6 +431,7 @@
     "triggered-event": "Eveniment declanșat",
     "unauthorized": "Neautorizat",
     "user-deleted": "Utilizator șters.",
+    "replay-min-duration-description": "Afișează doar reluările cu această durată sau mai mare.",
     "viewed-page": "Pagină vizualizată",
     "upgrade-required": "Această funcție necesită un abonament {plan}.",
     "visitor-log": "Vizitator din <b>{country}</b> folosind <b>{browser}</b> pe <b>{os}</b> <b>{device}</b>"

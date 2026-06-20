@@ -102,6 +102,7 @@
     "download": "Татах",
     "dropoff": "Уналт",
     "duration": "Хугацаа",
+    "min-duration-seconds": "Хамгийн бага үргэлжлэх хугацаа (секунд)",
     "edit": "Засах",
     "edit-member": "Гишүүн засах",
     "email": "Имэйл",
@@ -419,6 +420,7 @@
     "triggered-event": "Өдөөсөн үйлдэл",
     "unauthorized": "Зөвшөөрөлгүй",
     "user-deleted": "Хэрэглэгч устсан.",
+    "replay-min-duration-description": "Зөвхөн энэ эсвэл үүнээс их үргэлжлэх хугацаатай тоглуулалтуудыг харуул.",
     "viewed-page": "Үзсэн хуудас",
     "visitor-log": "<b>{country}</b> улсаас <b>{os}</b> <b>{device}</b> дээр <b>{browser}</b> хөтөч ашиглан орсон"
   }

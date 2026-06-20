@@ -385,6 +385,7 @@ export const labels: Record<string, string> = {
   replayEnabled: 'label.replay-enabled',
   recorderCode: 'label.recorder-code',
   sampleRate: 'label.sample-rate',
+  minDurationSeconds: 'label.min-duration-seconds',
   maskLevel: 'label.mask-level',
   maxDuration: 'label.max-duration',
   blockSelector: 'label.block-selector',
@@ -442,4 +443,5 @@ export const messages: Record<string, string> = {
   notFound: 'message.not-found',
   serverError: 'message.sever-error',
   upgradeRequired: 'message.upgrade-required',
+  replayMinDurationDescription: 'message.replay-min-duration-description',
 };

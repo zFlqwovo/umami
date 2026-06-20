@@ -103,6 +103,7 @@
     "download": "Letöltés",
     "dropoff": "Lemorzsolódás",
     "duration": "Időtartam",
+    "min-duration-seconds": "Minimális időtartam (másodperc)",
     "edit": "Módosítás",
     "edit-member": "Tag szerkesztése",
     "email": "E-mail",
@@ -430,6 +431,7 @@
     "triggered-event": "Kiváltott esemény",
     "unauthorized": "Nincs jogosultság",
     "user-deleted": "Felhasználó törölve.",
+    "replay-min-duration-description": "Csak az ezzel az időtartammal vagy annál hosszabb visszajátszásokat mutasd.",
     "viewed-page": "Megtekintett oldal",
     "upgrade-required": "Ez a funkció {plan} előfizetést igényel.",
     "visitor-log": "Látógató <b>{country}</b> területéről, <b>{os}</b> <b>{device}</b> eszközön, <b>{browser}</b> böngészőből."

@@ -103,6 +103,7 @@
     "download": "Download",
     "dropoff": "Dropoff",
     "duration": "Duration",
+    "min-duration-seconds": "Minimum duration (seconds)",
     "edit": "Edit",
     "edit-member": "Edit member",
     "email": "Email",
@@ -430,6 +431,7 @@
     "triggered-event": "Triggered event",
     "unauthorized": "Unauthorized",
     "user-deleted": "User deleted.",
+    "replay-min-duration-description": "Only show replays at or above this duration.",
     "viewed-page": "Viewed page",
     "upgrade-required": "This feature requires a {plan} plan subscription.",
     "visitor-log": "Visitor from <b>{country}</b> using <b>{browser}</b> on <b>{os}</b> <b>{device}</b>"

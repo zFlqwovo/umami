@@ -103,6 +103,7 @@
     "download": "Scarica",
     "dropoff": "Abbandono",
     "duration": "Durata",
+    "min-duration-seconds": "Durata minima (secondi)",
     "edit": "Modifica",
     "edit-member": "Modifica membro",
     "email": "Email",
@@ -430,6 +431,7 @@
     "triggered-event": "Evento attivato",
     "unauthorized": "Non autorizzato",
     "user-deleted": "Utente eliminato.",
+    "replay-min-duration-description": "Mostra solo le riproduzioni con questa durata o superiore.",
     "viewed-page": "Pagina visualizzata",
     "upgrade-required": "Questa funzionalità richiede un abbonamento al piano {plan}.",
     "visitor-log": "Utenti da <b>{country}</b> tramite <b>{browser}</b> su <b>{os}</b> <b>{device}</b>"

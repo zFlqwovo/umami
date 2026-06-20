@@ -103,6 +103,7 @@
     "download": "Download",
     "dropoff": "Frafald",
     "duration": "Varighed",
+    "min-duration-seconds": "Minimumsvarighed (sekunder)",
     "edit": "Rediger",
     "edit-member": "Rediger medlem",
     "email": "E-mail",
@@ -430,6 +431,7 @@
     "triggered-event": "Udløst begivenhed",
     "unauthorized": "Ikke autoriseret",
     "user-deleted": "Bruger slettet.",
+    "replay-min-duration-description": "Vis kun gengivelser med denne varighed eller derover.",
     "viewed-page": "Vist side",
     "upgrade-required": "Denne funktion kræver et {plan}-abonnement.",
     "visitor-log": "Besøgende fra <b>{country}</b> bruger <b>{browser}</b> på <b>{os}</b> <b>{device}</b>"

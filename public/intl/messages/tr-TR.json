@@ -103,6 +103,7 @@
     "download": "İndir",
     "dropoff": "Bırakma",
     "duration": "Süre",
+    "min-duration-seconds": "Minimum süre (saniye)",
     "edit": "Düzenle",
     "edit-member": "Üyeyi düzenle",
     "email": "E-posta",
@@ -430,6 +431,7 @@
     "triggered-event": "Tetiklenen olay",
     "unauthorized": "Yetkisiz",
     "user-deleted": "Kullanıcı silindi.",
+    "replay-min-duration-description": "Yalnızca bu süre veya daha uzun süren yeniden oynatmaları göster.",
     "viewed-page": "Görüntülenen sayfa",
     "upgrade-required": "Bu özellik {plan} plan aboneliği gerektirir.",
     "visitor-log": "Yeni ziyaretçi: <b>{country}</b>, <b>{os}</b>, <b>{device}</b>, <b>{browser}</b>"

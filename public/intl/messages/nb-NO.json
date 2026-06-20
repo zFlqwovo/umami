@@ -103,6 +103,7 @@
     "download": "Last ned",
     "dropoff": "Frafall",
     "duration": "Varighet",
+    "min-duration-seconds": "Minimumsvarighet (sekunder)",
     "edit": "Rediger",
     "edit-member": "Rediger bruker",
     "email": "E-post",
@@ -430,6 +431,7 @@
     "triggered-event": "Utløst hendelse",
     "unauthorized": "Ikke autorisert",
     "user-deleted": "Bruker slettet.",
+    "replay-min-duration-description": "Vis bare avspillinger med denne varigheten eller lenger.",
     "viewed-page": "Vist side",
     "upgrade-required": "Denne funksjonen krever et {plan}-abonnement.",
     "visitor-log": "Besøkende fra <b>{country}</b> med <b>{browser}</b> på <b>{os}</b> <b>{device}</b>"

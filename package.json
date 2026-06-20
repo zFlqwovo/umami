@@ -41,7 +41,6 @@
     "postbuild": "node scripts/postbuild.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "install-heatmap": "playwright install chromium --no-shell",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "seed-data": "tsx scripts/seed-data.ts",

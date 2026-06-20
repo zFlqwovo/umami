@@ -103,6 +103,7 @@
     "download": "Preuzmi",
     "dropoff": "Odlazak",
     "duration": "Trajanje",
+    "min-duration-seconds": "Minimalno trajanje (sekunde)",
     "edit": "Uredi",
     "edit-member": "Uredi člana",
     "email": "E-mail",
@@ -430,6 +431,7 @@
     "triggered-event": "Trigerovani događaj",
     "unauthorized": "Neautorizirano",
     "user-deleted": "Korisnik obrisan.",
+    "replay-min-duration-description": "Prikaži samo snimke s ovim ili dužim trajanjem.",
     "viewed-page": "Pogledana stranica",
     "upgrade-required": "Ova funkcija zahtijeva pretplatu na plan {plan}.",
     "visitor-log": "Posjetitelj iz <b>{country}</b> koristi <b>{browser}</b> na <b>{os}</b> <b>{device}</b>"

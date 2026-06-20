@@ -103,6 +103,7 @@
     "download": "Lataa",
     "dropoff": "Poistuminen",
     "duration": "Kesto",
+    "min-duration-seconds": "Vähimmäiskesto (sekuntia)",
     "edit": "Muokkaa",
     "edit-member": "Muokkaa jäsentä",
     "email": "Sähköposti",
@@ -430,6 +431,7 @@
     "triggered-event": "Laukaistu tapahtuma",
     "unauthorized": "Ei oikeuksia",
     "user-deleted": "Käyttäjä poistettu.",
+    "replay-min-duration-description": "Näytä vain toistot, joiden kesto on tämä tai enemmän.",
     "viewed-page": "Katsottu sivu",
     "upgrade-required": "Tämä ominaisuus vaatii {plan}-tilauksen.",
     "visitor-log": "Vierailija maasta <b>{country}</b> selaimella <b>{browser}</b> laitteella <b>{os}</b> <b>{device}</b>"

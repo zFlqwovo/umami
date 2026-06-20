@@ -102,6 +102,7 @@
     "download": "ڈاؤن لوڈ",
     "dropoff": "ڈراپ آف",
     "duration": "مدت",
+    "min-duration-seconds": "کم از کم مدت (سیکنڈ)",
     "edit": "ترمیم",
     "edit-member": "رکن میں ترمیم",
     "email": "ای میل",
@@ -419,6 +420,7 @@
     "triggered-event": "متحرک واقعہ",
     "unauthorized": "غیر مجاز",
     "user-deleted": "صارف حذف ہو گیا۔",
+    "replay-min-duration-description": "صرف وہ ری پلے دکھائیں جو اس مدت یا اس سے زیادہ ہوں۔",
     "viewed-page": "دیکھا گیا صفحہ",
     "visitor-log": "<b>{os}</b> <b>{device}</b> پر <b>{browser}</b> کا استعمال کرتے ہوئے <b>{country}</b> سے آنے والا"
   }
