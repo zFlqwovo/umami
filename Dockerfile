@@ -1,5 +1,7 @@
 ARG NODE_IMAGE_VERSION="22-alpine"
 ARG PNPM_VERSION="10.15.1"
+# Keep in sync with the prisma/@prisma/* versions in package.json
+ARG PRISMA_VERSION="7.8.0"
 
 # Install dependencies only when needed
 FROM node:${NODE_IMAGE_VERSION} AS deps
@@ -34,6 +36,7 @@ FROM node:${NODE_IMAGE_VERSION} AS runner
 WORKDIR /app
 
 ARG NODE_OPTIONS
+ARG PRISMA_VERSION
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -65,8 +68,6 @@ COPY --from=builder /app/generated ./generated
 # https://nextjs.org/docs/advanced-features/output-file-tracing
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-RUN rm -rf /app/node_modules
-COPY --from=deps /app/node_modules ./node_modules
 
 USER nextjs
 
