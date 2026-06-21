@@ -1,8 +1,8 @@
 'use client';
 import { Column, Grid, Heading, Loading, Row, Switch, Text } from '@umami/react-zen';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LoadingPanel } from '@/components/common/LoadingPanel';
-import { useReplayQuery, useResultQuery } from '@/components/hooks';
+import { useResultQuery } from '@/components/hooks';
 import { getClientAuthToken } from '@/lib/client';
 import { formatLongNumber } from '@/lib/format';
 import type { HeatmapMode, HeatmapPoint, HeatmapResult, HeatmapSnapshot } from '@/queries/sql';
@@ -10,7 +10,6 @@ import styles from './Heatmap.module.css';
 
 const CLICK_EDGE_PERCENT = 1.5;
 const SCROLL_BUCKET_SIZE = 10;
-const SNAPSHOT_UNAVAILABLE_ERROR = 'Page screenshot unavailable.';
 
 interface ViewportBucket {
   width: number;
@@ -111,7 +110,6 @@ export function Heatmap({ websiteId, urlPath, onUrlPathChange, mode, search }: H
           {urlPath ? (
             mode === 'scroll' ? (
               <ScrollHeatmapView
-                websiteId={websiteId}
                 urlPath={urlPath}
                 scroll={scroll}
                 snapshot={snapshot}
@@ -119,7 +117,6 @@ export function Heatmap({ websiteId, urlPath, onUrlPathChange, mode, search }: H
               />
             ) : (
               <ClickHeatmapView
-                websiteId={websiteId}
                 urlPath={urlPath}
                 points={points}
                 snapshot={snapshot}
@@ -234,13 +231,11 @@ function pickViewport(points: HeatmapPoint[]): ViewportBucket | null {
 }
 
 function ClickHeatmapView({
-  websiteId,
   urlPath,
   points,
   snapshot,
   isLoading,
 }: {
-  websiteId: string;
   urlPath: string;
   points: HeatmapPoint[];
   snapshot: HeatmapSnapshot | null;
@@ -280,7 +275,7 @@ function ClickHeatmapView({
   const renderHeight = snapshot?.pageH ?? baseHeight;
   const hasMeasuredWidth = Boolean(snapshot?.pageW || viewport?.pageW || maxPointX);
   const canvasWidth = hasMeasuredWidth
-    ? snapshot?.kind === 'replay'
+    ? snapshot?.kind === 'iframe'
       ? `${renderWidth}px`
       : `min(100%, ${renderWidth}px)`
     : '100%';
@@ -322,14 +317,8 @@ function ClickHeatmapView({
         )}
       </Column>
 
-      {showPage && snapshot?.kind === 'image' && snapshot.status === 'failed' && (
-        <Text color="muted" className={styles.snapshotMessage}>
-          {SNAPSHOT_UNAVAILABLE_ERROR}
-        </Text>
-      )}
-
       <div
-        className={`${styles.canvasWrapper} ${snapshot?.kind === 'replay' ? styles.canvasWrapperScrollable : ''}`}
+        className={`${styles.canvasWrapper} ${snapshot?.kind === 'iframe' ? styles.canvasWrapperScrollable : ''}`}
       >
         <div
           className={styles.canvas}
@@ -348,11 +337,7 @@ function ClickHeatmapView({
                 {showSnapshot && !snapshotReady && <CanvasLoading />}
                 {shouldRenderSnapshot && snapshot && (
                   <div hidden={!showPage}>
-                    <SnapshotPreview
-                      websiteId={websiteId}
-                      snapshot={snapshot}
-                      onReady={handleSnapshotReady}
-                    />
+                    <SnapshotPreview snapshot={snapshot} onReady={handleSnapshotReady} />
                   </div>
                 )}
               </div>
@@ -410,13 +395,11 @@ function ClickHeatmapView({
 }
 
 function ScrollHeatmapView({
-  websiteId,
   urlPath,
   scroll,
   snapshot,
   isLoading,
 }: {
-  websiteId: string;
   urlPath: string;
   scroll: HeatmapResult['scroll'] | undefined;
   snapshot: HeatmapSnapshot | null;
@@ -444,7 +427,7 @@ function ScrollHeatmapView({
   const renderHeight = snapshot?.pageH ?? baseHeight;
   const hasMeasuredWidth = Boolean(snapshot?.pageW || pageW);
   const canvasWidth = hasMeasuredWidth
-    ? snapshot?.kind === 'replay'
+    ? snapshot?.kind === 'iframe'
       ? `${renderWidth}px`
       : `min(100%, ${renderWidth}px)`
     : '100%';
@@ -501,14 +484,8 @@ function ScrollHeatmapView({
         </Row>
       )}
 
-      {showPage && snapshot?.kind === 'image' && snapshot.status === 'failed' && (
-        <Text color="muted" className={styles.snapshotMessage}>
-          {SNAPSHOT_UNAVAILABLE_ERROR}
-        </Text>
-      )}
-
       <div
-        className={`${styles.canvasWrapper} ${snapshot?.kind === 'replay' ? styles.canvasWrapperScrollable : ''}`}
+        className={`${styles.canvasWrapper} ${snapshot?.kind === 'iframe' ? styles.canvasWrapperScrollable : ''}`}
       >
         <div
           className={styles.canvas}
@@ -526,11 +503,7 @@ function ScrollHeatmapView({
               {showSnapshot && !snapshotReady && <CanvasLoading />}
               {shouldRenderSnapshot && snapshot && (
                 <div hidden={!showPage}>
-                  <SnapshotPreview
-                    websiteId={websiteId}
-                    snapshot={snapshot}
-                    onReady={handleSnapshotReady}
-                  />
+                  <SnapshotPreview snapshot={snapshot} onReady={handleSnapshotReady} />
                 </div>
               )}
               {showOverlay && (
@@ -578,28 +551,33 @@ function ScrollHeatmapView({
 }
 
 function SnapshotPreview({
-  websiteId,
   snapshot,
   onReady,
 }: {
-  websiteId: string;
   snapshot: HeatmapSnapshot;
   onReady: () => void;
 }) {
-  if (snapshot.kind === 'replay') {
-    return <ReplaySnapshot websiteId={websiteId} snapshot={snapshot} onReady={onReady} />;
+  if (snapshot.kind === 'iframe') {
+    return <IframeSnapshot snapshot={snapshot} onReady={onReady} />;
   }
 
   return <SnapshotImage snapshot={snapshot} onReady={onReady} />;
 }
 
-function SnapshotImage({ snapshot, onReady }: { snapshot: HeatmapSnapshot; onReady: () => void }) {
+function SnapshotImage({
+  snapshot,
+  onReady,
+}: {
+  snapshot: Extract<HeatmapSnapshot, { kind: 'image' }>;
+  onReady: () => void;
+}) {
   const [src, setSrc] = useState<string | null>(null);
-  const imageUrl = snapshot.kind === 'image' ? snapshot.imageUrl : null;
+  const imageUrl = snapshot.imageUrl;
 
   useEffect(() => {
-    if (snapshot.kind !== 'image' || !imageUrl) {
+    if (!imageUrl) {
       setSrc(null);
+      onReady();
       return;
     }
 
@@ -636,7 +614,7 @@ function SnapshotImage({ snapshot, onReady }: { snapshot: HeatmapSnapshot; onRea
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [imageUrl, onReady, snapshot.id, snapshot.kind]);
+  }, [imageUrl, onReady, snapshot.id]);
 
   const handleLoad = useCallback(() => onReady(), [onReady]);
 
@@ -653,91 +631,45 @@ function SnapshotImage({ snapshot, onReady }: { snapshot: HeatmapSnapshot; onRea
   );
 }
 
-function ReplaySnapshot({
-  websiteId,
+function IframeSnapshot({
   snapshot,
   onReady,
 }: {
-  websiteId: string;
-  snapshot: Extract<HeatmapSnapshot, { kind: 'replay' }>;
+  snapshot: Extract<HeatmapSnapshot, { kind: 'iframe' }>;
   onReady: () => void;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const replayerRef = useRef<any>(null);
-  const { data: replay, isLoading } = useReplayQuery(websiteId, snapshot.replayId, {
-    until: snapshot.replayTimeMs ?? undefined,
-    chunkIndex: snapshot.chunkIndex,
-    eventIndex: snapshot.eventIndex,
-  });
+  const [available, setAvailable] = useState(true);
 
   useEffect(() => {
-    if (isLoading) {
-      return;
-    }
+    setAvailable(true);
 
-    if (!replay?.events?.length || !containerRef.current) {
-      onReady();
-      return;
-    }
+    const readyTimer = window.setTimeout(() => onReady(), 1500);
 
-    let cancelled = false;
+    return () => window.clearTimeout(readyTimer);
+  }, [onReady, snapshot.id]);
 
-    import('rrweb')
-      .then(mod => {
-        if (cancelled || !containerRef.current) {
-          return;
-        }
+  const handleLoad = useCallback(() => onReady(), [onReady]);
+  const handleError = useCallback(() => {
+    setAvailable(false);
+    onReady();
+  }, [onReady]);
 
-        containerRef.current.innerHTML = '';
-
-        const replayer = new mod.Replayer(replay.events, {
-          root: containerRef.current,
-          loadTimeout: 0,
-          mouseTail: false,
-          pauseAnimation: true,
-          showWarning: false,
-        });
-
-        replayerRef.current = replayer;
-
-        const firstTimestamp = Number(replay.events[0]?.timestamp ?? 0);
-        const lastTimestamp = Number(replay.events[replay.events.length - 1]?.timestamp ?? 0);
-        const timeOffset = Math.max(0, lastTimestamp - firstTimestamp);
-
-        replayer.pause(timeOffset);
-        replayer.wrapper.style.width = '100%';
-        replayer.wrapper.style.height = '100%';
-        replayer.wrapper.style.pointerEvents = 'none';
-        replayer.wrapper.style.overflow = 'hidden';
-        replayer.iframe.style.display = 'block';
-        replayer.iframe.style.width = '100%';
-        replayer.iframe.style.height = '100%';
-        replayer.iframe.style.border = '0';
-        const replayMouse = replayer.wrapper.querySelector<HTMLElement>('.replayer-mouse');
-        const replayMouseTail = replayer.wrapper.querySelector<HTMLCanvasElement>(
-          '.replayer-mouse-tail',
-        );
-        if (replayMouse) {
-          replayMouse.style.display = 'none';
-        }
-        if (replayMouseTail) {
-          replayMouseTail.style.display = 'none';
-        }
-
-        onReady();
-      })
-      .catch(() => onReady());
-
-    return () => {
-      cancelled = true;
-      replayerRef.current?.destroy?.();
-      replayerRef.current = null;
-    };
-  }, [isLoading, onReady, replay?.events, snapshot.id]);
+  if (!available) {
+    return null;
+  }
 
   return (
     <div className={styles.snapshot}>
-      <div ref={containerRef} className={styles.snapshotFrame} />
+      <iframe
+        className={styles.snapshotIframe}
+        src={snapshot.url}
+        title={snapshot.url}
+        tabIndex={-1}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        onLoad={handleLoad}
+        onError={handleError}
+      />
     </div>
   );
 }

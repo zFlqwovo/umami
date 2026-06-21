@@ -4,12 +4,13 @@ import { CLICKHOUSE, PRISMA, runQuery } from '@/lib/db';
 import { filtersObjectToArray } from '@/lib/params';
 import prisma from '@/lib/prisma';
 import type { QueryFilters } from '@/lib/types';
+import { getWebsite } from '@/queries/prisma';
 import {
+  buildHeatmapPageUrl,
   ensureHeatmapSnapshot,
   type HeatmapSnapshotImage,
   shouldSkipSnapshot,
 } from './ensureHeatmapSnapshot';
-import { getHeatmapReplayPreview } from './getHeatmapReplayPreview';
 
 const FUNCTION_NAME = 'getHeatmap';
 
@@ -48,20 +49,17 @@ export interface HeatmapScrollBucket {
   sessions: number;
 }
 
-export interface HeatmapSnapshotReplay {
-  kind: 'replay';
+export interface HeatmapSnapshotIframe {
+  kind: 'iframe';
   id: string;
-  replayId: string;
-  chunkIndex: number;
-  eventIndex: number;
-  replayTimeMs: number | null;
+  url: string;
   pageW: number;
   pageH: number;
   viewportW: number;
   viewportH: number;
 }
 
-export type HeatmapSnapshot = HeatmapSnapshotImage | HeatmapSnapshotReplay;
+export type HeatmapSnapshot = HeatmapSnapshotImage | HeatmapSnapshotIframe;
 
 export interface HeatmapResult {
   mode: HeatmapMode;
@@ -411,7 +409,7 @@ async function clickhouseQuery(
       viewportH:
         dim?.viewportH === null || dim?.viewportH === undefined ? null : Number(dim.viewportH),
     };
-    const snapshot = await ensureHeatmapSnapshot({
+    const snapshot = await resolveHeatmapSnapshot({
       websiteId,
       urlPath,
       viewportW: scroll.viewportW,
@@ -501,7 +499,7 @@ async function clickhouseQuery(
   }));
 
   const viewport = pickSnapshotViewport(points);
-  const snapshot = await ensureHeatmapSnapshot({
+  const snapshot = await resolveHeatmapSnapshot({
     websiteId,
     urlPath,
     viewportW: viewport?.width ?? null,
@@ -539,35 +537,67 @@ async function resolveHeatmapSnapshot({
   pageW: number | null;
   pageH: number | null;
 }): Promise<HeatmapSnapshot | null> {
-  if (process.env.PLAYWRIGHT_URL?.trim()) {
-    return ensureHeatmapSnapshot({
-      websiteId,
-      urlPath,
-      viewportW,
-      viewportH,
-      pageW,
-      pageH,
-    });
+  const imageSnapshot = await ensureHeatmapSnapshot({
+    websiteId,
+    urlPath,
+    viewportW,
+    viewportH,
+    pageW,
+    pageH,
+  });
+
+  if (imageSnapshot?.status === 'ready' && imageSnapshot.imageUrl) {
+    return imageSnapshot;
   }
 
-  const replayPreview = await getHeatmapReplayPreview(websiteId, urlPath, viewportW, viewportH);
+  return getIframeSnapshot({
+    websiteId,
+    urlPath,
+    viewportW,
+    viewportH,
+    pageW,
+    pageH,
+  });
+}
 
-  if (replayPreview && pageW && pageH) {
-    return {
-      kind: 'replay',
-      id: replayPreview.id,
-      replayId: replayPreview.replayId,
-      chunkIndex: replayPreview.chunkIndex,
-      eventIndex: replayPreview.eventIndex,
-      replayTimeMs: replayPreview.replayTimeMs,
-      pageW,
-      pageH,
-      viewportW: replayPreview.viewportW,
-      viewportH: replayPreview.viewportH,
-    };
+async function getIframeSnapshot({
+  websiteId,
+  urlPath,
+  viewportW,
+  viewportH,
+  pageW,
+  pageH,
+}: {
+  websiteId: string;
+  urlPath: string;
+  viewportW: number | null;
+  viewportH: number | null;
+  pageW: number | null;
+  pageH: number | null;
+}): Promise<HeatmapSnapshotIframe | null> {
+  if (!urlPath || !viewportW || !pageW || !pageH || shouldSkipSnapshot(urlPath)) {
+    return null;
   }
 
-  return null;
+  const website = await getWebsite(websiteId);
+  const url = buildHeatmapPageUrl(website?.domain, urlPath);
+
+  if (!url) {
+    return null;
+  }
+
+  const fallbackViewportH = Math.min(Math.max(pageH, 640), 1080);
+  const height = viewportH || fallbackViewportH;
+
+  return {
+    kind: 'iframe',
+    id: `iframe:${websiteId}:${urlPath}:${viewportW}x${height}`,
+    url,
+    pageW,
+    pageH,
+    viewportW,
+    viewportH: height,
+  };
 }
 
 function pickSnapshotViewport(
@@ -646,7 +676,7 @@ function getRelationalHeatmapPathFilterContext(filters: QueryFilters) {
     return { filterQuery: '', queryParams: {} };
   }
 
-  const clauses = pathFilters.map(({ operator, value, paramName, name }) => {
+  const clauses = pathFilters.map(({ operator, paramName, name }) => {
     const key = paramName ?? name;
 
     switch (operator) {
@@ -706,7 +736,7 @@ function getClickhouseHeatmapPathFilterContext(filters: QueryFilters) {
     return { filterQuery: '', queryParams: {} };
   }
 
-  const clauses = pathFilters.map(({ operator, value, paramName, name }) => {
+  const clauses = pathFilters.map(({ operator, paramName, name }) => {
     const key = paramName ?? name;
 
     switch (operator) {

@@ -371,14 +371,18 @@ function getWebsiteOrigin(domain?: string | null) {
   return new URL(`${protocol}://${host}`);
 }
 
-function buildCaptureUrl(domain: string | null | undefined, urlPath: string) {
-  const origin = getWebsiteOrigin(domain);
+export function buildHeatmapPageUrl(domain: string | null | undefined, urlPath: string) {
+  try {
+    const origin = getWebsiteOrigin(domain);
 
-  if (!origin) {
+    if (!origin) {
+      return null;
+    }
+
+    return new URL(urlPath || '/', origin).toString();
+  } catch {
     return null;
   }
-
-  return new URL(urlPath || '/', origin).toString();
 }
 
 export function shouldSkipSnapshot(urlPath: string) {
@@ -613,7 +617,6 @@ async function captureSnapshot(
   url: string,
   viewportW: number,
   viewportH: number,
-  pageW?: number,
 ): Promise<CaptureResult> {
   const browser = await createSnapshotBrowser();
 
@@ -718,7 +721,7 @@ export async function ensureHeatmapSnapshot({
 
   const snapshotId = existing?.id ?? uuid();
   const website = await getWebsite(websiteId);
-  const captureUrl = buildCaptureUrl(website?.domain, urlPath);
+  const captureUrl = buildHeatmapPageUrl(website?.domain, urlPath);
 
   if (!captureUrl) {
     await upsertSnapshotRecord({
@@ -755,7 +758,7 @@ export async function ensureHeatmapSnapshot({
   });
 
   try {
-    const capture = await captureSnapshot(captureUrl, viewportW, viewportH, pageW);
+    const capture = await captureSnapshot(captureUrl, viewportW, viewportH);
     const objectKey = clickhouse.enabled
       ? getSnapshotObjectKey(websiteId, snapshotId, viewportW, viewportH)
       : null;
