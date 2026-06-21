@@ -1,6 +1,6 @@
 'use client';
 import { Column, Grid, Heading, Loading, Row, Switch, Text } from '@umami/react-zen';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LoadingPanel } from '@/components/common/LoadingPanel';
 import { useResultQuery } from '@/components/hooks';
 import { getClientAuthToken } from '@/lib/client';
@@ -10,6 +10,7 @@ import styles from './Heatmap.module.css';
 
 const CLICK_EDGE_PERCENT = 1.5;
 const SCROLL_BUCKET_SIZE = 10;
+const CANVAS_MAX_HEIGHT_RATIO = 0.75;
 
 interface ViewportBucket {
   width: number;
@@ -230,6 +231,53 @@ function pickViewport(points: HeatmapPoint[]): ViewportBucket | null {
   };
 }
 
+function useCanvasFit(renderWidth: number, renderHeight: number) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [available, setAvailable] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const updateAvailableSize = () => {
+      const rect = wrapperRef.current?.getBoundingClientRect();
+      const width = rect?.width ?? 0;
+      const height = window.innerHeight * CANVAS_MAX_HEIGHT_RATIO;
+
+      setAvailable(current =>
+        current.width === width && current.height === height ? current : { width, height },
+      );
+    };
+
+    updateAvailableSize();
+
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateAvailableSize) : null;
+
+    if (wrapperRef.current && resizeObserver) {
+      resizeObserver.observe(wrapperRef.current);
+    }
+
+    window.addEventListener('resize', updateAvailableSize);
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', updateAvailableSize);
+    };
+  }, []);
+
+  const safeWidth = Math.max(1, renderWidth);
+  const safeHeight = Math.max(1, renderHeight);
+  const scale =
+    available.width && available.height
+      ? Math.min(1, available.width / safeWidth, available.height / safeHeight)
+      : 1;
+
+  return {
+    wrapperRef,
+    scale,
+    width: Math.max(1, Math.round(safeWidth * scale)),
+    height: Math.max(1, Math.round(safeHeight * scale)),
+  };
+}
+
 function ClickHeatmapView({
   urlPath,
   points,
@@ -274,11 +322,9 @@ function ClickHeatmapView({
   const renderWidth = snapshot?.pageW ?? baseWidth;
   const renderHeight = snapshot?.pageH ?? baseHeight;
   const hasMeasuredWidth = Boolean(snapshot?.pageW || viewport?.pageW || maxPointX);
-  const canvasWidth = hasMeasuredWidth
-    ? snapshot?.kind === 'iframe'
-      ? `${renderWidth}px`
-      : `min(100%, ${renderWidth}px)`
-    : '100%';
+  const fit = useCanvasFit(renderWidth, renderHeight);
+  const canvasWidth = hasMeasuredWidth ? `${fit.width}px` : '100%';
+  const canvasHeight = hasMeasuredWidth ? `${fit.height}px` : undefined;
   const overlayPageW = snapshot?.pageW ?? viewport?.pageW ?? baseWidth;
   const overlayPageH = snapshot?.pageH ?? viewport?.pageH ?? baseHeight;
   const shouldRenderSnapshot = renderWidth > 0 && hasSnapshot;
@@ -317,13 +363,12 @@ function ClickHeatmapView({
         )}
       </Column>
 
-      <div
-        className={`${styles.canvasWrapper} ${snapshot?.kind === 'iframe' ? styles.canvasWrapperScrollable : ''}`}
-      >
+      <div ref={fit.wrapperRef} className={styles.canvasWrapper}>
         <div
           className={styles.canvas}
           style={{
             width: canvasWidth,
+            height: canvasHeight,
             aspectRatio: `${Math.max(1, renderWidth)} / ${Math.max(1, renderHeight)}`,
           }}
         >
@@ -332,7 +377,14 @@ function ClickHeatmapView({
           ) : !viewport || visible.length === 0 ? (
             <EmptyState message="No click data for this page yet." />
           ) : (
-            <>
+            <div
+              className={styles.canvasSurface}
+              style={{
+                width: Math.max(1, renderWidth),
+                height: Math.max(1, renderHeight),
+                transform: `scale(${fit.scale})`,
+              }}
+            >
               <div className={styles.snapshotClip}>
                 {showSnapshot && !snapshotReady && <CanvasLoading />}
                 {shouldRenderSnapshot && snapshot && (
@@ -378,7 +430,7 @@ function ClickHeatmapView({
                   })}
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -426,11 +478,9 @@ function ScrollHeatmapView({
   const renderWidth = snapshot?.pageW ?? baseWidth;
   const renderHeight = snapshot?.pageH ?? baseHeight;
   const hasMeasuredWidth = Boolean(snapshot?.pageW || pageW);
-  const canvasWidth = hasMeasuredWidth
-    ? snapshot?.kind === 'iframe'
-      ? `${renderWidth}px`
-      : `min(100%, ${renderWidth}px)`
-    : '100%';
+  const fit = useCanvasFit(renderWidth, renderHeight);
+  const canvasWidth = hasMeasuredWidth ? `${fit.width}px` : '100%';
+  const canvasHeight = hasMeasuredWidth ? `${fit.height}px` : undefined;
   const shouldRenderSnapshot = renderWidth > 0 && hasSnapshot;
   const showSnapshot = shouldRenderSnapshot && showPage;
   const showOverlay = !showPage || !shouldRenderSnapshot || snapshotReady;
@@ -484,13 +534,12 @@ function ScrollHeatmapView({
         </Row>
       )}
 
-      <div
-        className={`${styles.canvasWrapper} ${snapshot?.kind === 'iframe' ? styles.canvasWrapperScrollable : ''}`}
-      >
+      <div ref={fit.wrapperRef} className={styles.canvasWrapper}>
         <div
           className={styles.canvas}
           style={{
             width: canvasWidth,
+            height: canvasHeight,
             aspectRatio: `${Math.max(1, renderWidth)} / ${Math.max(1, renderHeight)}`,
           }}
         >
@@ -499,7 +548,14 @@ function ScrollHeatmapView({
           ) : !hasScrollData ? (
             <EmptyState message="No scroll data for this page yet." />
           ) : (
-            <div className={styles.canvasClip}>
+            <div
+              className={styles.canvasSurface}
+              style={{
+                width: Math.max(1, renderWidth),
+                height: Math.max(1, renderHeight),
+                transform: `scale(${fit.scale})`,
+              }}
+            >
               {showSnapshot && !snapshotReady && <CanvasLoading />}
               {shouldRenderSnapshot && snapshot && (
                 <div hidden={!showPage}>
@@ -661,7 +717,7 @@ function IframeSnapshot({
   return (
     <div className={styles.snapshot}>
       <iframe
-        className={styles.snapshotIframe}
+        className={`${styles.snapshotIframe} rr-block`}
         src={snapshot.url}
         title={snapshot.url}
         tabIndex={-1}
