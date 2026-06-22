@@ -84,6 +84,25 @@
   white-space: nowrap;
 }
 
+.screenWidthControl {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.screenWidthLabel,
+.screenWidthValue {
+  white-space: nowrap;
+}
+
+.screenWidthValue {
+  min-width: 0;
+}
+
+.screenWidthCount {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
 .scrollBand {
   position: absolute;
   left: 0;

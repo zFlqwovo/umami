@@ -1,5 +1,17 @@
 'use client';
-import { Column, Grid, Heading, Loading, Row, Switch, Text } from '@umami/react-zen';
+import {
+  Column,
+  Grid,
+  Heading,
+  Icon,
+  ListItem,
+  Loading,
+  Row,
+  Select,
+  Switch,
+  Text,
+} from '@umami/react-zen';
+import { Laptop, Monitor, Smartphone, Tablet } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LoadingPanel } from '@/components/common/LoadingPanel';
 import { useResultQuery } from '@/components/hooks';
@@ -11,13 +23,18 @@ import styles from './Heatmap.module.css';
 const CLICK_EDGE_PERCENT = 1.5;
 const SCROLL_BUCKET_SIZE = 10;
 const CANVAS_MAX_HEIGHT_RATIO = 0.75;
+const SCREEN_WIDTH_BUCKETS = [320, 375, 425, 768, 1024, 1440, 1920] as const;
+const TEST_IFRAME_URL = 'https://astrofox.io';
 
-interface ViewportBucket {
+interface ScreenWidthBucket {
   width: number;
-  height: number;
+  viewportH: number;
   pageW: number;
   pageH: number;
-  count: number;
+  positions: number;
+  clicks: number;
+  minViewportW: number;
+  maxViewportW: number;
 }
 
 interface HeatmapProps {
@@ -178,57 +195,126 @@ function PageList({
   );
 }
 
-function pickViewport(points: HeatmapPoint[]): ViewportBucket | null {
+function getScreenWidthBucketWidth(viewportW: number) {
+  return SCREEN_WIDTH_BUCKETS.reduce((best, width) => {
+    const bestDistance = Math.abs(viewportW - best);
+    const distance = Math.abs(viewportW - width);
+
+    return distance < bestDistance ? width : best;
+  }, SCREEN_WIDTH_BUCKETS[0]);
+}
+
+function getScreenWidthBuckets(points: HeatmapPoint[]): ScreenWidthBucket[] {
   if (!points.length) {
-    return null;
+    return [];
   }
 
-  const viewportBuckets = new Map<
-    string,
-    ViewportBucket & { maxPageW: number; maxPageH: number }
+  const buckets = new Map<
+    number,
+    ScreenWidthBucket & {
+      weightedViewportH: number;
+    }
   >();
 
   for (const point of points) {
-    const viewportKey = `${point.viewportW}x${point.viewportH}`;
-    const existing = viewportBuckets.get(viewportKey);
+    const width = getScreenWidthBucketWidth(point.viewportW);
+    const scale = width / Math.max(1, point.viewportW);
+    const scaledViewportH = point.viewportH * scale;
+    const scaledPageW = Math.max(width, point.pageW * scale);
+    const scaledPageH = Math.max(scaledViewportH, point.pageH * scale);
+    const existing = buckets.get(width);
 
     if (existing) {
-      existing.count += point.count;
-      existing.maxPageW = Math.max(existing.maxPageW, point.pageW);
-      existing.maxPageH = Math.max(existing.maxPageH, point.pageH);
+      existing.positions += 1;
+      existing.clicks += point.count;
+      existing.pageW = Math.max(existing.pageW, scaledPageW);
+      existing.pageH = Math.max(existing.pageH, scaledPageH);
+      existing.weightedViewportH += scaledViewportH * point.count;
+      existing.minViewportW = Math.min(existing.minViewportW, point.viewportW);
+      existing.maxViewportW = Math.max(existing.maxViewportW, point.viewportW);
       continue;
     }
 
-    viewportBuckets.set(viewportKey, {
-      width: point.viewportW,
-      height: point.viewportH,
-      pageW: point.pageW,
-      pageH: point.pageH,
-      count: point.count,
-      maxPageW: point.pageW,
-      maxPageH: point.pageH,
+    buckets.set(width, {
+      width,
+      viewportH: scaledViewportH,
+      pageW: scaledPageW,
+      pageH: scaledPageH,
+      positions: 1,
+      clicks: point.count,
+      minViewportW: point.viewportW,
+      maxViewportW: point.viewportW,
+      weightedViewportH: scaledViewportH * point.count,
     });
   }
 
-  let best: (ViewportBucket & { maxPageW: number; maxPageH: number }) | null = null;
+  return SCREEN_WIDTH_BUCKETS.map(width => buckets.get(width))
+    .filter((bucket): bucket is ScreenWidthBucket & { weightedViewportH: number } =>
+      Boolean(bucket),
+    )
+    .map(({ weightedViewportH, ...bucket }) => ({
+      ...bucket,
+      viewportH: Math.max(1, Math.round(weightedViewportH / Math.max(1, bucket.clicks))),
+      pageW: Math.max(bucket.width, Math.round(bucket.pageW)),
+      pageH: Math.max(640, Math.round(bucket.pageH)),
+    }));
+}
 
-  for (const bucket of viewportBuckets.values()) {
-    if (!best || bucket.count > best.count) {
-      best = bucket;
-    }
-  }
+function getDefaultScreenWidthBucket(buckets: ScreenWidthBucket[]) {
+  return buckets.reduce<ScreenWidthBucket | null>(
+    (best, bucket) => (!best || bucket.clicks > best.clicks ? bucket : best),
+    null,
+  );
+}
 
-  if (!best) {
-    return null;
-  }
+function normalizePointToBucket(point: HeatmapPoint, bucket: ScreenWidthBucket): HeatmapPoint {
+  const scale = bucket.width / Math.max(1, point.viewportW);
+  const viewportH = Math.max(1, Math.round(point.viewportH * scale));
 
   return {
-    width: best.width,
-    height: best.height,
-    pageW: best.maxPageW,
-    pageH: best.maxPageH,
-    count: best.count,
+    ...point,
+    x: point.x * scale,
+    y: point.y * scale,
+    pageX: point.pageX * scale,
+    pageY: point.pageY * scale,
+    pageW: Math.max(bucket.width, point.pageW * scale),
+    pageH: Math.max(viewportH, point.pageH * scale),
+    viewportW: bucket.width,
+    viewportH,
   };
+}
+
+function getNormalizedBucketPoints(points: HeatmapPoint[], bucket: ScreenWidthBucket) {
+  const groupedPoints = new Map<string, HeatmapPoint>();
+
+  for (const point of points) {
+    if (getScreenWidthBucketWidth(point.viewportW) !== bucket.width) {
+      continue;
+    }
+
+    const normalized = normalizePointToBucket(point, bucket);
+    const pageX = Math.round(normalized.pageX);
+    const pageY = Math.round(normalized.pageY);
+    const key = `${pageX}:${pageY}`;
+    const existing = groupedPoints.get(key);
+
+    if (existing) {
+      existing.count += normalized.count;
+      existing.pageW = Math.max(existing.pageW, normalized.pageW);
+      existing.pageH = Math.max(existing.pageH, normalized.pageH);
+      continue;
+    }
+
+    groupedPoints.set(key, {
+      ...normalized,
+      x: Math.round(normalized.x),
+      y: Math.round(normalized.y),
+      pageX,
+      pageY,
+    });
+  }
+
+  return Array.from(groupedPoints.values());
 }
 
 function useCanvasFit(renderWidth: number, renderHeight: number) {
@@ -278,6 +364,88 @@ function useCanvasFit(renderWidth: number, renderHeight: number) {
   };
 }
 
+function ScreenWidthSelect({
+  buckets,
+  value,
+  onChange,
+}: {
+  buckets: ScreenWidthBucket[];
+  value: number | null;
+  onChange: (value: number) => void;
+}) {
+  const bucketsByWidth = useMemo(
+    () => new Map(buckets.map(bucket => [bucket.width, bucket])),
+    [buckets],
+  );
+
+  if (!value || buckets.length === 0) {
+    return null;
+  }
+
+  return (
+    <Row alignItems="center" gap="2" className={styles.screenWidthControl}>
+      <Text color="muted" className={styles.screenWidthLabel}>
+        Screen width:
+      </Text>
+      <Select
+        aria-label="Screen width"
+        value={value}
+        onChange={nextValue => onChange(Number(nextValue))}
+        maxHeight={420}
+        renderValue={() => <ScreenWidthValue width={value} />}
+        buttonProps={{
+          style: {
+            minHeight: 36,
+            minWidth: 132,
+          },
+        }}
+        listProps={{
+          style: {
+            width: 176,
+          },
+        }}
+      >
+        {SCREEN_WIDTH_BUCKETS.map(width => {
+          const bucket = bucketsByWidth.get(width);
+
+          return (
+            <ListItem key={width} id={width} isDisabled={!bucket}>
+              <Row alignItems="center" justifyContent="space-between" gap="2">
+                <ScreenWidthValue width={width} />
+                {bucket && (
+                  <Text color="muted" className={styles.screenWidthCount}>
+                    {formatLongNumber(bucket.clicks)}
+                  </Text>
+                )}
+              </Row>
+            </ListItem>
+          );
+        })}
+      </Select>
+    </Row>
+  );
+}
+
+function ScreenWidthValue({ width }: { width: number }) {
+  return (
+    <Row alignItems="center" gap="2" className={styles.screenWidthValue}>
+      <ScreenWidthIcon width={width} />
+      <Text>{width} px</Text>
+    </Row>
+  );
+}
+
+function ScreenWidthIcon({ width }: { width: number }) {
+  const DeviceIcon =
+    width < 768 ? Smartphone : width < 1200 ? Tablet : width < 1600 ? Laptop : Monitor;
+
+  return (
+    <Icon size="sm">
+      <DeviceIcon />
+    </Icon>
+  );
+}
+
 function ClickHeatmapView({
   urlPath,
   points,
@@ -291,16 +459,37 @@ function ClickHeatmapView({
 }) {
   const [showPage, setShowPage] = useState(true);
   const [snapshotReady, setSnapshotReady] = useState(false);
-  const viewport = useMemo(() => pickViewport(points), [points]);
+  const [selectedScreenWidth, setSelectedScreenWidth] = useState<number | null>(null);
+  const screenWidthBuckets = useMemo(() => getScreenWidthBuckets(points), [points]);
+  const defaultScreenWidth = useMemo(
+    () => getDefaultScreenWidthBucket(screenWidthBuckets)?.width ?? null,
+    [screenWidthBuckets],
+  );
+
+  useEffect(() => {
+    const availableWidths = new Set(screenWidthBuckets.map(bucket => bucket.width));
+
+    setSelectedScreenWidth(current => {
+      if (!defaultScreenWidth) {
+        return null;
+      }
+
+      return current && availableWidths.has(current) ? current : defaultScreenWidth;
+    });
+  }, [defaultScreenWidth, screenWidthBuckets]);
+
+  const viewport = useMemo(() => {
+    const activeWidth = selectedScreenWidth ?? defaultScreenWidth;
+
+    return screenWidthBuckets.find(bucket => bucket.width === activeWidth) ?? null;
+  }, [defaultScreenWidth, screenWidthBuckets, selectedScreenWidth]);
 
   const visible = useMemo(() => {
     if (!viewport) {
       return [];
     }
 
-    return points.filter(
-      point => point.viewportW === viewport.width && point.viewportH === viewport.height,
-    );
+    return getNormalizedBucketPoints(points, viewport);
   }, [points, viewport]);
 
   const maxCount = useMemo(
@@ -319,18 +508,23 @@ function ClickHeatmapView({
   const maxPointY = visible.reduce((max, point) => Math.max(max, point.pageY), 0);
   const baseWidth = Math.max(viewport?.pageW ?? 0, maxPointX + overlayGutter, 1);
   const baseHeight = Math.max(viewport?.pageH ?? 0, maxPointY + overlayGutter, 640);
-  const renderWidth = snapshot?.pageW ?? baseWidth;
-  const renderHeight = snapshot?.pageH ?? baseHeight;
+  const renderWidth = viewport?.pageW ?? snapshot?.pageW ?? baseWidth;
+  const renderHeight = viewport?.pageH ?? snapshot?.pageH ?? baseHeight;
   const hasMeasuredWidth = Boolean(snapshot?.pageW || viewport?.pageW || maxPointX);
   const fit = useCanvasFit(renderWidth, renderHeight);
   const canvasWidth = hasMeasuredWidth ? `${fit.width}px` : '100%';
   const canvasHeight = hasMeasuredWidth ? `${fit.height}px` : undefined;
-  const overlayPageW = snapshot?.pageW ?? viewport?.pageW ?? baseWidth;
-  const overlayPageH = snapshot?.pageH ?? viewport?.pageH ?? baseHeight;
+  const overlayPageW = viewport?.pageW ?? snapshot?.pageW ?? baseWidth;
+  const overlayPageH = viewport?.pageH ?? snapshot?.pageH ?? baseHeight;
   const shouldRenderSnapshot = renderWidth > 0 && hasSnapshot;
   const showSnapshot = shouldRenderSnapshot && showPage;
   const showOverlay = !showPage || !shouldRenderSnapshot || snapshotReady;
   const totalClicks = visible.reduce((sum, point) => sum + point.count, 0);
+  const bucketDescription = viewport
+    ? viewport.minViewportW === viewport.maxViewportW
+      ? `Recorded at ${viewport.minViewportW}px wide`
+      : `Grouped recorded widths from ${viewport.minViewportW}px to ${viewport.maxViewportW}px`
+    : undefined;
   const showLoading = isLoading;
 
   return (
@@ -354,11 +548,16 @@ function ClickHeatmapView({
             gap
             className={styles.summaryStats}
           >
-            <Text color="muted" className={styles.summaryStat}>
+            <Text color="muted" className={styles.summaryStat} title={bucketDescription}>
               {viewport
-                ? `${visible.length} positions - ${formatLongNumber(totalClicks)} clicks - viewport ${viewport.width}x${viewport.height}`
+                ? `${visible.length} positions - ${formatLongNumber(totalClicks)} clicks - screen width ${viewport.width}px`
                 : 'No click data for this page yet.'}
             </Text>
+            <ScreenWidthSelect
+              buckets={screenWidthBuckets}
+              value={viewport?.width ?? null}
+              onChange={setSelectedScreenWidth}
+            />
           </Row>
         )}
       </Column>
@@ -398,10 +597,8 @@ function ClickHeatmapView({
                   {visible.map((point, index) => {
                     const intensity = Math.min(1, point.count / maxCount);
                     const desiredSize = 24 + intensity * 36;
-                    const pointWidth = Math.max(overlayPageW, point.pageX);
-                    const pointHeight = Math.max(overlayPageH, point.pageY);
-                    const rawCenterX = (point.pageX / Math.max(1, pointWidth)) * 100;
-                    const rawCenterY = (point.pageY / Math.max(1, pointHeight)) * 100;
+                    const rawCenterX = (point.pageX / Math.max(1, overlayPageW)) * 100;
+                    const rawCenterY = (point.pageY / Math.max(1, overlayPageH)) * 100;
                     const size = desiredSize;
                     const centerX = Math.max(
                       CLICK_EDGE_PERCENT,
@@ -695,6 +892,7 @@ function IframeSnapshot({
   onReady: () => void;
 }) {
   const [available, setAvailable] = useState(true);
+  const iframeUrl = TEST_IFRAME_URL;
 
   useEffect(() => {
     setAvailable(true);
@@ -718,8 +916,8 @@ function IframeSnapshot({
     <div className={styles.snapshot}>
       <iframe
         className={`${styles.snapshotIframe} rr-block`}
-        src={snapshot.url}
-        title={snapshot.url}
+        src={iframeUrl}
+        title={iframeUrl}
         tabIndex={-1}
         loading="lazy"
         referrerPolicy="no-referrer"
