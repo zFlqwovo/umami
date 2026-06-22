@@ -41,8 +41,8 @@ export async function POST(
   { params }: { params: Promise<{ websiteId: string }> },
 ) {
   const schema = z.object({
-    name: z.string().optional(),
-    domain: z.string().optional(),
+    name: z.string().max(100).optional(),
+    domain: z.string().max(500).optional(),
     shareId: z.string().max(50).nullable().optional(),
     replayConfig: z
       .object({
