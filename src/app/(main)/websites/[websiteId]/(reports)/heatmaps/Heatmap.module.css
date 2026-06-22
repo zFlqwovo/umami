@@ -135,10 +135,6 @@
   overscroll-behavior: contain;
 }
 
-.snapshotControlRow {
-  margin-top: 8px;
-}
-
 .canvas {
   position: relative;
   overflow: hidden;

@@ -8,7 +8,6 @@ import {
   Loading,
   Row,
   Select,
-  Switch,
   Text,
 } from '@umami/react-zen';
 import { Laptop, Monitor, Smartphone, Tablet } from 'lucide-react';
@@ -24,7 +23,6 @@ const CLICK_EDGE_PERCENT = 1.5;
 const SCROLL_BUCKET_SIZE = 10;
 const CANVAS_MAX_HEIGHT_RATIO = 0.75;
 const SCREEN_WIDTH_BUCKETS = [320, 375, 425, 768, 1024, 1440, 1920] as const;
-const TEST_IFRAME_URL = 'https://astrofox.io';
 
 interface ScreenWidthBucket {
   width: number;
@@ -457,7 +455,6 @@ function ClickHeatmapView({
   snapshot: HeatmapSnapshot | null;
   isLoading: boolean;
 }) {
-  const [showPage, setShowPage] = useState(true);
   const [snapshotReady, setSnapshotReady] = useState(false);
   const [selectedScreenWidth, setSelectedScreenWidth] = useState<number | null>(null);
   const screenWidthBuckets = useMemo(() => getScreenWidthBuckets(points), [points]);
@@ -517,8 +514,7 @@ function ClickHeatmapView({
   const overlayPageW = viewport?.pageW ?? snapshot?.pageW ?? baseWidth;
   const overlayPageH = viewport?.pageH ?? snapshot?.pageH ?? baseHeight;
   const shouldRenderSnapshot = renderWidth > 0 && hasSnapshot;
-  const showSnapshot = shouldRenderSnapshot && showPage;
-  const showOverlay = !showPage || !shouldRenderSnapshot || snapshotReady;
+  const showOverlay = !shouldRenderSnapshot || snapshotReady;
   const totalClicks = visible.reduce((sum, point) => sum + point.count, 0);
   const bucketDescription = viewport
     ? viewport.minViewportW === viewport.maxViewportW
@@ -585,11 +581,9 @@ function ClickHeatmapView({
               }}
             >
               <div className={styles.snapshotClip}>
-                {showSnapshot && !snapshotReady && <CanvasLoading />}
+                {shouldRenderSnapshot && !snapshotReady && <CanvasLoading />}
                 {shouldRenderSnapshot && snapshot && (
-                  <div hidden={!showPage}>
-                    <SnapshotPreview snapshot={snapshot} onReady={handleSnapshotReady} />
-                  </div>
+                  <SnapshotPreview snapshot={snapshot} onReady={handleSnapshotReady} />
                 )}
               </div>
               {showOverlay && (
@@ -631,14 +625,6 @@ function ClickHeatmapView({
           )}
         </div>
       </div>
-
-      {hasSnapshot && (
-        <Row justifyContent="center" className={styles.snapshotControlRow}>
-          <Switch isSelected={showPage} onChange={setShowPage}>
-            Show page
-          </Switch>
-        </Row>
-      )}
     </Column>
   );
 }
@@ -654,7 +640,6 @@ function ScrollHeatmapView({
   snapshot: HeatmapSnapshot | null;
   isLoading: boolean;
 }) {
-  const [showPage, setShowPage] = useState(true);
   const [snapshotReady, setSnapshotReady] = useState(false);
   const handleSnapshotReady = useCallback(() => setSnapshotReady(true), []);
   const hasSnapshot = Boolean(snapshot);
@@ -679,8 +664,7 @@ function ScrollHeatmapView({
   const canvasWidth = hasMeasuredWidth ? `${fit.width}px` : '100%';
   const canvasHeight = hasMeasuredWidth ? `${fit.height}px` : undefined;
   const shouldRenderSnapshot = renderWidth > 0 && hasSnapshot;
-  const showSnapshot = shouldRenderSnapshot && showPage;
-  const showOverlay = !showPage || !shouldRenderSnapshot || snapshotReady;
+  const showOverlay = !shouldRenderSnapshot || snapshotReady;
   const hasScrollData = Boolean(scroll && totalSessions > 0 && pageW && pageH && viewportW);
   const showLoading = isLoading;
 
@@ -753,11 +737,9 @@ function ScrollHeatmapView({
                 transform: `scale(${fit.scale})`,
               }}
             >
-              {showSnapshot && !snapshotReady && <CanvasLoading />}
+              {shouldRenderSnapshot && !snapshotReady && <CanvasLoading />}
               {shouldRenderSnapshot && snapshot && (
-                <div hidden={!showPage}>
-                  <SnapshotPreview snapshot={snapshot} onReady={handleSnapshotReady} />
-                </div>
+                <SnapshotPreview snapshot={snapshot} onReady={handleSnapshotReady} />
               )}
               {showOverlay && (
                 <div className={styles.overlay}>
@@ -791,14 +773,6 @@ function ScrollHeatmapView({
           )}
         </div>
       </div>
-
-      {hasSnapshot && (
-        <Row justifyContent="center" className={styles.snapshotControlRow}>
-          <Switch isSelected={showPage} onChange={setShowPage}>
-            Show page
-          </Switch>
-        </Row>
-      )}
     </Column>
   );
 }
@@ -892,7 +866,7 @@ function IframeSnapshot({
   onReady: () => void;
 }) {
   const [available, setAvailable] = useState(true);
-  const iframeUrl = TEST_IFRAME_URL;
+  const iframeUrl = snapshot.url;
 
   useEffect(() => {
     setAvailable(true);
