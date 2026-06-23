@@ -123,6 +123,10 @@
   border-radius: 4px;
   padding: 1px 6px;
   white-space: nowrap;
+  /* Counter-scaled inline via transform: scale(1 / fit.scale). Anchor to the
+     top-right corner (where the band right-aligns it) so it grows inward and
+     stays pinned to the edge instead of drifting off-canvas. */
+  transform-origin: top right;
 }
 
 .canvasWrapper {

@@ -853,7 +853,13 @@ function ScrollHeatmapView({
                         }}
                         title={`${band.toPct}% depth - ${formatLongNumber(band.reached)} sessions reached`}
                       >
-                        <span className={styles.scrollBandLabel}>
+                        <span
+                          className={styles.scrollBandLabel}
+                          // Counter-scale the label by the inverse of the canvas
+                          // scale so its on-screen size stays constant while the
+                          // bands resize with the rest of the overlay.
+                          style={{ transform: `scale(${1 / fit.scale})` }}
+                        >
                           {band.toPct}% depth - {Math.round(intensity * 100)}% reached
                         </span>
                       </div>
