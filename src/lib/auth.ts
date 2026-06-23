@@ -38,7 +38,13 @@ export async function checkAuth(request: Request) {
     }
   }
 
-  log({ token, payload, authKey, shareToken, user });
+  log({
+    hasToken: !!token,
+    hasPayload: !!payload,
+    hasAuthKey: !!authKey,
+    hasShareToken: !!shareToken,
+    userId: user?.id,
+  });
 
   if (!user?.id && !shareToken) {
     log('User not authorized');
