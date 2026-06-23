@@ -41,7 +41,8 @@ export async function checkAuth(request: Request) {
     if (key?.userId) {
       user = await getUser(key.userId, { includePassword: true });
 
-      if (user && hash(user.password) !== key.pwd) {
+      // Only enforce password-change invalidation for sessions that include a password fingerprint.
+      if (user && key.pwd && hash(user.password) !== key.pwd) {
         user = null;
       }
     }
