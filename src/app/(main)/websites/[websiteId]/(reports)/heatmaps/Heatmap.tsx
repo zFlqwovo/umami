@@ -14,7 +14,6 @@ import { Laptop, Monitor, Smartphone, Tablet } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LoadingPanel } from '@/components/common/LoadingPanel';
 import { useResultQuery } from '@/components/hooks';
-import { getClientAuthToken } from '@/lib/client';
 import { formatLongNumber } from '@/lib/format';
 import type { HeatmapMode, HeatmapPoint, HeatmapResult, HeatmapSnapshot } from '@/queries/sql';
 import styles from './Heatmap.module.css';
@@ -882,90 +881,14 @@ function SnapshotPreview({
   snapshot: HeatmapSnapshot;
   onReady: () => void;
 }) {
-  if (snapshot.kind === 'iframe') {
-    return <IframeSnapshot snapshot={snapshot} onReady={onReady} />;
-  }
-
-  return <SnapshotImage snapshot={snapshot} onReady={onReady} />;
-}
-
-function SnapshotImage({
-  snapshot,
-  onReady,
-}: {
-  snapshot: Extract<HeatmapSnapshot, { kind: 'image' }>;
-  onReady: () => void;
-}) {
-  const [src, setSrc] = useState<string | null>(null);
-  const imageUrl = snapshot.imageUrl;
-
-  useEffect(() => {
-    if (!imageUrl) {
-      setSrc(null);
-      onReady();
-      return;
-    }
-
-    const controller = new AbortController();
-    const token = getClientAuthToken();
-    let objectUrl: string | null = null;
-
-    setSrc(null);
-
-    fetch(imageUrl, {
-      signal: controller.signal,
-      headers: {
-        ...(token ? { authorization: `Bearer ${token}` } : {}),
-      },
-    })
-      .then(async response => {
-        if (!response.ok) {
-          throw new Error(`Snapshot image request failed: ${response.status}`);
-        }
-
-        const blob = await response.blob();
-        objectUrl = URL.createObjectURL(blob);
-        setSrc(objectUrl);
-      })
-      .catch(() => {
-        setSrc(null);
-        onReady();
-      });
-
-    return () => {
-      controller.abort();
-
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-  }, [imageUrl, onReady, snapshot.id]);
-
-  const handleLoad = useCallback(() => onReady(), [onReady]);
-  const imageWidth = Math.max(snapshot.pageW, snapshot.viewportW);
-
-  return (
-    <div className={styles.snapshot}>
-      <img
-        className={styles.snapshotImage}
-        src={src || undefined}
-        alt=""
-        draggable={false}
-        onLoad={handleLoad}
-        style={{
-          width: imageWidth,
-          height: snapshot.pageH,
-        }}
-      />
-    </div>
-  );
+  return <IframeSnapshot snapshot={snapshot} onReady={onReady} />;
 }
 
 function IframeSnapshot({
   snapshot,
   onReady,
 }: {
-  snapshot: Extract<HeatmapSnapshot, { kind: 'iframe' }>;
+  snapshot: HeatmapSnapshot;
   onReady: () => void;
 }) {
   const [available, setAvailable] = useState(true);

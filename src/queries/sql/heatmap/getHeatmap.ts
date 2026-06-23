@@ -5,12 +5,6 @@ import { filtersObjectToArray } from '@/lib/params';
 import prisma from '@/lib/prisma';
 import type { QueryFilters } from '@/lib/types';
 import { getWebsite } from '@/queries/prisma';
-import {
-  buildHeatmapPageUrl,
-  ensureHeatmapSnapshot,
-  type HeatmapSnapshotImage,
-  shouldSkipSnapshot,
-} from './ensureHeatmapSnapshot';
 
 const FUNCTION_NAME = 'getHeatmap';
 
@@ -32,7 +26,6 @@ export interface HeatmapPage {
 }
 
 export interface HeatmapPoint {
-  nodeId: number | null;
   x: number;
   y: number;
   pageX: number;
@@ -63,7 +56,7 @@ export interface HeatmapSnapshotIframe {
   viewportH: number;
 }
 
-export type HeatmapSnapshot = HeatmapSnapshotImage | HeatmapSnapshotIframe;
+export type HeatmapSnapshot = HeatmapSnapshotIframe;
 
 export interface HeatmapResult {
   mode: HeatmapMode;
@@ -234,7 +227,6 @@ async function relationalQuery(
   const rawPoints: HeatmapPoint[] = await rawQuery(
     `
     select
-      h.node_id as "nodeId",
       h.x,
       h.y,
       h.page_x as "pageX",
@@ -260,7 +252,6 @@ async function relationalQuery(
       and h.viewport_w is not null
       and h.viewport_h is not null
     group by
-      h.node_id,
       h.x,
       h.y,
       h.page_x,
@@ -441,7 +432,6 @@ async function clickhouseQuery(
 
   const pointRows = await rawQuery<
     {
-      nodeId: number | null;
       x: number;
       y: number;
       pageX: number;
@@ -455,7 +445,6 @@ async function clickhouseQuery(
   >(
     `
     select
-      h.node_id as nodeId,
       h.x,
       h.y,
       h.page_x as pageX,
@@ -481,7 +470,6 @@ async function clickhouseQuery(
       and h.viewport_w is not null
       and h.viewport_h is not null
     group by
-      h.node_id,
       h.x,
       h.y,
       h.page_x,
@@ -498,7 +486,6 @@ async function clickhouseQuery(
   );
 
   const points: HeatmapPoint[] = pointRows.map(p => ({
-    nodeId: p.nodeId === null || p.nodeId === undefined ? null : Number(p.nodeId),
     x: Number(p.x),
     y: Number(p.y),
     pageX: Number(p.pageX),
@@ -549,19 +536,6 @@ async function resolveHeatmapSnapshot({
   pageW: number | null;
   pageH: number | null;
 }): Promise<HeatmapSnapshot | null> {
-  const imageSnapshot = await ensureHeatmapSnapshot({
-    websiteId,
-    urlPath,
-    viewportW,
-    viewportH,
-    pageW,
-    pageH,
-  });
-
-  if (imageSnapshot?.status === 'ready' && imageSnapshot.imageUrl) {
-    return imageSnapshot;
-  }
-
   return getIframeSnapshot({
     websiteId,
     urlPath,
@@ -610,6 +584,48 @@ async function getIframeSnapshot({
     viewportW,
     viewportH: height,
   };
+}
+
+function getFirstDomain(domain?: string | null) {
+  return domain?.split(',')[0]?.trim() || null;
+}
+
+function getWebsiteOrigin(domain?: string | null) {
+  const host = getFirstDomain(domain);
+
+  if (!host) {
+    return null;
+  }
+
+  if (host.startsWith('http://') || host.startsWith('https://')) {
+    return new URL(host);
+  }
+
+  const protocol =
+    host.startsWith('localhost') || host.startsWith('127.0.0.1') || host.startsWith('[::1]')
+      ? 'http'
+      : 'https';
+
+  return new URL(`${protocol}://${host}`);
+}
+
+function buildHeatmapPageUrl(domain: string | null | undefined, urlPath: string) {
+  try {
+    const origin = getWebsiteOrigin(domain);
+
+    if (!origin) {
+      return null;
+    }
+
+    return new URL(urlPath || '/', origin).toString();
+  } catch {
+    return null;
+  }
+}
+
+function shouldSkipSnapshot(urlPath: string) {
+  // Internal Umami app routes cannot be rendered from the tracked website domain.
+  return urlPath.startsWith('/teams/');
 }
 
 function pickSnapshotViewport(

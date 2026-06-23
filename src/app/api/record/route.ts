@@ -217,7 +217,6 @@ export async function POST(request: Request) {
         sessionId,
         visitId,
         eventType: event.type === 'click' ? HEATMAP_EVENT_TYPE.click : HEATMAP_EVENT_TYPE.scroll,
-        nodeId: null,
         x: event.type === 'click' ? (event.x ?? null) : null,
         y: event.type === 'click' ? (event.y ?? null) : null,
         pageX: event.type === 'click' ? (event.pageX ?? null) : null,
@@ -229,9 +228,6 @@ export async function POST(request: Request) {
         scrollPct: event.type === 'scroll' ? (event.scrollPct ?? null) : null,
         urlPath: getUrlPath(event.url),
         createdAt: new Date(event.timestamp ?? fallbackMs),
-        replayChunkIndex: null,
-        replayEventIndex: null,
-        replayTimeMs: null,
       }));
 
       if (heatmapRows.length) {
