@@ -244,11 +244,6 @@ export async function POST(request: Request) {
 
     return json({ ok: true });
   } catch (e) {
-    const error = serializeError(e);
-
-    // eslint-disable-next-line no-console
-    console.log(error);
-
-    return serverError({ errorObject: error });
+    return serverError(e);
   }
 }

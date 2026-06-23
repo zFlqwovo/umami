@@ -268,12 +268,26 @@ export const SHARE_ID_REGEX = /^[a-zA-Z0-9]{8,50}$/;
 export const DATETIME_REGEX =
   /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{3})?(Z|\+[0-9]{2}:[0-9]{2})?$/;
 
-export const URL_LENGTH = 500;
-export const PAGE_TITLE_LENGTH = 500;
-export const EVENT_NAME_LENGTH = 50;
-export const TAG_LENGTH = 50;
-export const HOSTNAME_LENGTH = 100;
-export const FIELD_VALUE_LENGTH = 255;
+export const FIELD_LENGTH = {
+  browser: 20,
+  os: 20,
+  device: 20,
+  screen: 11,
+  language: 35,
+  country: 2,
+  region: 20,
+  city: 50,
+  distinctId: 50,
+  url: 500,
+  pageTitle: 500,
+  eventName: 50,
+  tag: 50,
+  hostname: 100,
+  fieldValue: 255,
+  dataKey: 500,
+  stringValue: 500,
+  currency: 10,
+} as const;
 
 export const UTM_PARAMS = ['utm_campaign', 'utm_content', 'utm_medium', 'utm_source', 'utm_term'];
 

@@ -1,6 +1,5 @@
 import { startOfHour } from 'date-fns';
 import { isbot } from 'isbot';
-import { serializeError } from 'serialize-error';
 import { z } from 'zod';
 import clickhouse from '@/lib/clickhouse';
 import { CACHE_TOKEN_TYPE, COLLECTION_TYPE, EVENT_TYPE } from '@/lib/constants';
@@ -24,13 +23,10 @@ interface Cache {
 // Reject strings whose first character is a spreadsheet formula trigger to
 // prevent CSV formula injection in analytics exports (defense-in-depth).
 const FORMULA_TRIGGER_RE = /^[=+\-@\t\r]/;
-const safeStringParam = (maxLen: number) =>
-  z
-    .string()
-    .max(maxLen)
-    .refine(val => !FORMULA_TRIGGER_RE.test(val), {
-      message: 'Value must not start with =, +, -, @, tab, or carriage return',
-    });
+const safeStringParam = () =>
+  z.string().refine(val => !FORMULA_TRIGGER_RE.test(val), {
+    message: 'Value must not start with =, +, -, @, tab, or carriage return',
+  });
 
 const schema = z.object({
   type: z.enum(['event', 'identify', 'performance']),
@@ -40,21 +36,21 @@ const schema = z.object({
       link: z.uuid().optional(),
       pixel: z.uuid().optional(),
       data: anyObjectParam.optional(),
-      hostname: z.string().max(100).optional(),
-      language: z.string().max(35).optional(),
+      hostname: z.string().optional(),
+      language: z.string().optional(),
       referrer: urlOrPathParam.optional(),
-      screen: z.string().max(11).optional(),
-      title: z.string().max(500).optional(),
+      screen: z.string().optional(),
+      title: z.string().optional(),
       url: urlOrPathParam.optional(),
-      name: safeStringParam(50).optional(),
-      tag: safeStringParam(50).optional(),
+      name: safeStringParam().optional(),
+      tag: safeStringParam().optional(),
       ip: z.string().optional(),
       userAgent: z.string().optional(),
       timestamp: z.coerce.number().int().optional(),
-      id: z.string().max(50).optional(),
-      browser: z.string().max(20).optional(),
-      os: z.string().max(20).optional(),
-      device: z.string().max(20).optional(),
+      id: z.string().optional(),
+      browser: z.string().optional(),
+      os: z.string().optional(),
+      device: z.string().optional(),
       lcp: z.number().nonnegative().max(60000).optional(),
       inp: z.number().nonnegative().max(60000).optional(),
       cls: z.number().nonnegative().max(100).optional(),
@@ -326,11 +322,6 @@ export async function POST(request: Request) {
 
     return json({ cache: token, sessionId, visitId });
   } catch (e) {
-    const error = serializeError(e);
-
-    // eslint-disable-next-line no-console
-    console.log(error);
-
-    return serverError({ errorObject: error });
+    return serverError(e);
   }
 }
