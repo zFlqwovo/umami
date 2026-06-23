@@ -11,9 +11,7 @@ export async function POST(request: Request) {
   }
 
   if (!redis.enabled) {
-    return serverError({
-      message: 'Redis is disabled',
-    });
+    return serverError('Redis is disabled');
   }
 
   const token = await saveAuth({ userId: auth.user.id }, 86400);

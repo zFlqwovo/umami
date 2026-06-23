@@ -1,3 +1,5 @@
+import { serializeError } from 'serialize-error';
+
 export function ok() {
   return Response.json({ ok: true });
 }
@@ -52,14 +54,18 @@ export function notFound(error?: Record<string, any>) {
   );
 }
 
-export function serverError(error?: Record<string, any>) {
+export function serverError(error?: unknown) {
+  if (error && typeof error !== 'string') {
+    // eslint-disable-next-line no-console
+    console.log(serializeError(error));
+  }
+
   return Response.json(
     {
       error: {
-        message: 'Server error',
+        message: typeof error === 'string' ? error : 'Server error',
         code: 'server-error',
         status: 500,
-        ...error,
       },
     },
     { status: 500 },
