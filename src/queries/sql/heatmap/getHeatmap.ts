@@ -47,6 +47,10 @@ export interface HeatmapPoint {
 export interface HeatmapScrollBucket {
   depth: number;
   sessions: number;
+  pageW: number;
+  pageH: number;
+  viewportW: number;
+  viewportH: number;
 }
 
 export interface HeatmapSnapshotIframe {
@@ -117,6 +121,7 @@ async function relationalQuery(
       and page_w is not null
       and page_h is not null
       and viewport_w is not null
+      and viewport_h is not null
     `;
 
   const rawPages: HeatmapPage[] = await rawQuery(
@@ -146,13 +151,30 @@ async function relationalQuery(
   }
 
   if (mode === 'scroll') {
-    const bucketRows: { depth: number | string; sessions: number | string }[] = await rawQuery(
+    const bucketRows: {
+      depth: number | string;
+      sessions: number | string;
+      pageW: number | string;
+      pageH: number | string;
+      viewportW: number | string;
+      viewportH: number | string;
+    }[] = await rawQuery(
       `
       select
         (floor(max_pct / ${SCROLL_BUCKET_SIZE}) * ${SCROLL_BUCKET_SIZE})::int as depth,
-        count(*)::int as sessions
+        count(*)::int as sessions,
+        page_w::int as "pageW",
+        page_h::int as "pageH",
+        viewport_w::int as "viewportW",
+        viewport_h::int as "viewportH"
       from (
-        select h.visit_id, max(h.scroll_pct) as max_pct
+        select
+          h.visit_id,
+          max(h.scroll_pct) as max_pct,
+          (mode() within group (order by h.page_w))::int as page_w,
+          (mode() within group (order by h.page_h))::int as page_h,
+          (mode() within group (order by h.viewport_w))::int as viewport_w,
+          (mode() within group (order by h.viewport_h))::int as viewport_h
         from heatmap_event h
         ${filterContext.joinQuery}
         where h.website_id = {{websiteId::uuid}}
@@ -161,58 +183,43 @@ async function relationalQuery(
           and h.created_at between {{startDate}} and {{endDate}}
           ${filterContext.filterQuery}
           and h.scroll_pct is not null
+          and h.page_w is not null
+          and h.page_h is not null
+          and h.viewport_w is not null
+          and h.viewport_h is not null
         group by h.visit_id
       ) per_session
-      group by depth
+      group by depth, page_w, page_h, viewport_w, viewport_h
       order by depth
       `,
       { ...filterContext.queryParams, websiteId, eventType, urlPath, startDate, endDate },
       FUNCTION_NAME,
     );
 
-    const dimRows: {
-      totalSessions: number | string;
-      pageW: number | null;
-      pageH: number | null;
-      viewportW: number | null;
-      viewportH: number | null;
-    }[] = await rawQuery(
-      `
-      select
-        count(distinct h.visit_id)::int as "totalSessions",
-        (mode() within group (order by h.page_w))::int as "pageW",
-        (mode() within group (order by h.page_h))::int as "pageH",
-        (mode() within group (order by h.viewport_w))::int as "viewportW",
-        (mode() within group (order by h.viewport_h))::int as "viewportH"
-      from heatmap_event h
-      ${filterContext.joinQuery}
-      where h.website_id = {{websiteId::uuid}}
-        and h.event_type = {{eventType}}
-        and h.url_path = {{urlPath}}
-        and h.created_at between {{startDate}} and {{endDate}}
-        ${filterContext.filterQuery}
-        and h.scroll_pct is not null
-      `,
-      { ...filterContext.queryParams, websiteId, eventType, urlPath, startDate, endDate },
-      FUNCTION_NAME,
-    );
-
-    const dim = dimRows[0];
+    const scrollBuckets = bucketRows.map(r => ({
+      depth: Number(r.depth),
+      sessions: Number(r.sessions),
+      pageW: Number(r.pageW),
+      pageH: Number(r.pageH),
+      viewportW: Number(r.viewportW),
+      viewportH: Number(r.viewportH),
+    }));
+    const viewport = pickScrollSnapshotViewport(scrollBuckets);
     const scroll = {
-      buckets: bucketRows.map(r => ({ depth: Number(r.depth), sessions: Number(r.sessions) })),
-      totalSessions: Number(dim?.totalSessions ?? 0),
-      pageW: dim?.pageW ?? null,
-      pageH: dim?.pageH ?? null,
-      viewportW: dim?.viewportW ?? null,
-      viewportH: dim?.viewportH ?? null,
+      buckets: scrollBuckets,
+      totalSessions: scrollBuckets.reduce((sum, bucket) => sum + bucket.sessions, 0),
+      pageW: viewport?.pageW ?? null,
+      pageH: viewport?.pageH ?? null,
+      viewportW: viewport?.width ?? null,
+      viewportH: viewport?.height ?? null,
     };
     const snapshot = await resolveHeatmapSnapshot({
       websiteId,
       urlPath,
-      viewportW: scroll.viewportW,
-      viewportH: scroll.viewportH,
-      pageW: scroll.pageW,
-      pageH: scroll.pageH,
+      viewportW: viewport?.width ?? null,
+      viewportH: viewport?.height ?? null,
+      pageW: viewport?.pageW ?? null,
+      pageH: viewport?.pageH ?? null,
     });
 
     return {
@@ -307,6 +314,7 @@ async function clickhouseQuery(
       and page_w is not null
       and page_h is not null
       and viewport_w is not null
+      and viewport_h is not null
     `;
 
   const pageRows = await rawQuery<
@@ -345,13 +353,32 @@ async function clickhouseQuery(
   }
 
   if (mode === 'scroll') {
-    const bucketRows = await rawQuery<{ depth: number | string; sessions: number | string }[]>(
+    const bucketRows = await rawQuery<
+      {
+        depth: number | string;
+        sessions: number | string;
+        pageW: number | string;
+        pageH: number | string;
+        viewportW: number | string;
+        viewportH: number | string;
+      }[]
+    >(
       `
       select
         intDiv(max_pct, ${SCROLL_BUCKET_SIZE}) * ${SCROLL_BUCKET_SIZE} as depth,
-        count() as sessions
+        count() as sessions,
+        pageW,
+        pageH,
+        viewportW,
+        viewportH
       from (
-        select h.visit_id, max(h.scroll_pct) as max_pct
+        select
+          h.visit_id,
+          max(h.scroll_pct) as max_pct,
+          toInt32OrNull(toString(arrayElement(topK(1)(h.page_w), 1))) as pageW,
+          toInt32OrNull(toString(arrayElement(topK(1)(h.page_h), 1))) as pageH,
+          toInt32OrNull(toString(arrayElement(topK(1)(h.viewport_w), 1))) as viewportW,
+          toInt32OrNull(toString(arrayElement(topK(1)(h.viewport_h), 1))) as viewportH
         from heatmap_event h
         ${filterContext.joinQuery}
         where h.website_id = {websiteId:UUID}
@@ -360,62 +387,47 @@ async function clickhouseQuery(
           and h.created_at between {startDate:DateTime64} and {endDate:DateTime64}
           ${filterContext.filterQuery}
           and h.scroll_pct is not null
+          and h.page_w is not null
+          and h.page_h is not null
+          and h.viewport_w is not null
+          and h.viewport_h is not null
         group by h.visit_id
       )
-      group by depth
+      where pageW is not null
+        and pageH is not null
+        and viewportW is not null
+        and viewportH is not null
+      group by depth, pageW, pageH, viewportW, viewportH
       order by depth
       `,
       { ...filterContext.queryParams, websiteId, eventType, urlPath, startDate, endDate },
       FUNCTION_NAME,
     );
 
-    const dimRows = await rawQuery<
-      {
-        totalSessions: number | string;
-        pageW: number | null;
-        pageH: number | null;
-        viewportW: number | null;
-        viewportH: number | null;
-      }[]
-    >(
-      `
-      select
-        uniq(h.visit_id) as totalSessions,
-        toInt32OrNull(toString(arrayElement(topK(1)(h.page_w), 1))) as pageW,
-        toInt32OrNull(toString(arrayElement(topK(1)(h.page_h), 1))) as pageH,
-        toInt32OrNull(toString(arrayElement(topK(1)(h.viewport_w), 1))) as viewportW,
-        toInt32OrNull(toString(arrayElement(topK(1)(h.viewport_h), 1))) as viewportH
-      from heatmap_event h
-      ${filterContext.joinQuery}
-      where h.website_id = {websiteId:UUID}
-        and h.event_type = {eventType:UInt8}
-        and h.url_path = {urlPath:String}
-        and h.created_at between {startDate:DateTime64} and {endDate:DateTime64}
-        ${filterContext.filterQuery}
-        and h.scroll_pct is not null
-      `,
-      { ...filterContext.queryParams, websiteId, eventType, urlPath, startDate, endDate },
-      FUNCTION_NAME,
-    );
-
-    const dim = dimRows[0];
+    const scrollBuckets = bucketRows.map(r => ({
+      depth: Number(r.depth),
+      sessions: Number(r.sessions),
+      pageW: Number(r.pageW),
+      pageH: Number(r.pageH),
+      viewportW: Number(r.viewportW),
+      viewportH: Number(r.viewportH),
+    }));
+    const viewport = pickScrollSnapshotViewport(scrollBuckets);
     const scroll = {
-      buckets: bucketRows.map(r => ({ depth: Number(r.depth), sessions: Number(r.sessions) })),
-      totalSessions: Number(dim?.totalSessions ?? 0),
-      pageW: dim?.pageW === null || dim?.pageW === undefined ? null : Number(dim.pageW),
-      pageH: dim?.pageH === null || dim?.pageH === undefined ? null : Number(dim.pageH),
-      viewportW:
-        dim?.viewportW === null || dim?.viewportW === undefined ? null : Number(dim.viewportW),
-      viewportH:
-        dim?.viewportH === null || dim?.viewportH === undefined ? null : Number(dim.viewportH),
+      buckets: scrollBuckets,
+      totalSessions: scrollBuckets.reduce((sum, bucket) => sum + bucket.sessions, 0),
+      pageW: viewport?.pageW ?? null,
+      pageH: viewport?.pageH ?? null,
+      viewportW: viewport?.width ?? null,
+      viewportH: viewport?.height ?? null,
     };
     const snapshot = await resolveHeatmapSnapshot({
       websiteId,
       urlPath,
-      viewportW: scroll.viewportW,
-      viewportH: scroll.viewportH,
-      pageW: scroll.pageW,
-      pageH: scroll.pageH,
+      viewportW: viewport?.width ?? null,
+      viewportH: viewport?.height ?? null,
+      pageW: viewport?.pageW ?? null,
+      pageH: viewport?.pageH ?? null,
     });
 
     return {
@@ -643,6 +655,65 @@ function pickSnapshotViewport(
 
   for (const bucket of viewportBuckets.values()) {
     if (!bestViewport || bucket.count > bestViewport.count) {
+      bestViewport = bucket;
+    }
+  }
+
+  if (!bestViewport) {
+    return null;
+  }
+
+  return {
+    width: bestViewport.width,
+    height: bestViewport.height,
+    pageW: bestViewport.maxPageW,
+    pageH: bestViewport.maxPageH,
+  };
+}
+
+function pickScrollSnapshotViewport(
+  buckets: HeatmapScrollBucket[],
+): { width: number; height: number; pageW: number; pageH: number } | null {
+  const viewportBuckets = new Map<
+    string,
+    {
+      width: number;
+      height: number;
+      sessions: number;
+      maxPageW: number;
+      maxPageH: number;
+    }
+  >();
+
+  for (const bucket of buckets) {
+    const viewportKey = `${bucket.viewportW}x${bucket.viewportH}`;
+    const viewportBucket = viewportBuckets.get(viewportKey);
+
+    if (viewportBucket) {
+      viewportBucket.sessions += bucket.sessions;
+      viewportBucket.maxPageW = Math.max(viewportBucket.maxPageW, bucket.pageW);
+      viewportBucket.maxPageH = Math.max(viewportBucket.maxPageH, bucket.pageH);
+    } else {
+      viewportBuckets.set(viewportKey, {
+        width: bucket.viewportW,
+        height: bucket.viewportH,
+        sessions: bucket.sessions,
+        maxPageW: bucket.pageW,
+        maxPageH: bucket.pageH,
+      });
+    }
+  }
+
+  let bestViewport: {
+    width: number;
+    height: number;
+    sessions: number;
+    maxPageW: number;
+    maxPageH: number;
+  } | null = null;
+
+  for (const bucket of viewportBuckets.values()) {
+    if (!bestViewport || bucket.sessions > bestViewport.sessions) {
       bestViewport = bucket;
     }
   }

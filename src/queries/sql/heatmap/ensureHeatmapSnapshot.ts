@@ -698,14 +698,14 @@ export async function ensureHeatmapSnapshot({
     return null;
   }
 
+  if (!process.env.PLAYWRIGHT_URL?.trim()) {
+    return null;
+  }
+
   const existing = await findSnapshot(websiteId, urlPath, viewportW, viewportH);
 
   if (existing?.status === SNAPSHOT_STATUS.ready && existing.hasImage) {
     return mapSnapshot(websiteId, existing);
-  }
-
-  if (!process.env.PLAYWRIGHT_URL?.trim()) {
-    return null;
   }
 
   const updatedAt = existing?.updatedAt ? new Date(existing.updatedAt) : null;
