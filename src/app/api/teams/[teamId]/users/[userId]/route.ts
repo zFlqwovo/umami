@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TEAM_ROLE_RANK } from '@/lib/constants';
+import { ROLES, TEAM_ROLE_RANK } from '@/lib/constants';
 import { parseRequest } from '@/lib/request';
 import { badRequest, json, ok, unauthorized } from '@/lib/response';
 import { teamRoleParam } from '@/lib/schema';
@@ -89,6 +89,10 @@ export async function DELETE(
 
   if (!teamUser) {
     return badRequest({ message: 'The User does not exists on this team.' });
+  }
+
+  if (!auth.user.isAdmin && teamUser.role === ROLES.teamOwner) {
+    return unauthorized({ message: 'You do not have permission to remove this user.' });
   }
 
   // Server-side rank check: actor must outrank target to remove them.
