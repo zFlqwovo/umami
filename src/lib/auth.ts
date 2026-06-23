@@ -6,7 +6,7 @@ import {
   SHARE_TOKEN_HEADER,
   SHARE_TOKEN_TYPE,
 } from '@/lib/constants';
-import { createAuthKey, secret } from '@/lib/crypto';
+import { createAuthKey, hash, secret } from '@/lib/crypto';
 import { createSecureToken, parseSecureToken, parseToken } from '@/lib/jwt';
 import redis from '@/lib/redis';
 import { ensureArray } from '@/lib/utils';
@@ -29,12 +29,21 @@ export async function checkAuth(request: Request) {
   const { userId, authKey } = payload || {};
 
   if (userId) {
-    user = await getUser(userId);
+    user = await getUser(userId, { includePassword: true });
+
+    // Reject tokens issued before the current password.
+    if (user && hash(user.password) !== payload.pwd) {
+      user = null;
+    }
   } else if (redis.enabled && authKey) {
     const key = await redis.client.get(authKey);
 
     if (key?.userId) {
-      user = await getUser(key.userId);
+      user = await getUser(key.userId, { includePassword: true });
+
+      if (user && hash(user.password) !== key.pwd) {
+        user = null;
+      }
     }
   }
 
@@ -60,6 +69,7 @@ export async function checkAuth(request: Request) {
   }
 
   if (user) {
+    delete user.password;
     user.isAdmin = user.role === ROLES.admin;
   }
 
