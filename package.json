@@ -52,7 +52,6 @@
     ".next/cache"
   ],
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1068.0",
     "@clickhouse/client": "^1.20.0",
     "@date-fns/utc": "^2.1.1",
     "@dicebear/collection": "^9.4.2",
@@ -98,7 +97,6 @@
     "npm-run-all": "^4.1.5",
     "papaparse": "^5.5.3",
     "pg": "^8.21.0",
-    "playwright-core": "^1.60.0",
     "prisma": "^7.8.0",
     "prop-types": "^15.8.1",
     "react": "^19.2.7",
