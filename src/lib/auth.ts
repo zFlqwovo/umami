@@ -32,7 +32,8 @@ export async function checkAuth(request: Request) {
     user = await getUser(userId, { includePassword: true });
 
     // Reject tokens issued before the current password.
-    if (user && hash(user.password) !== payload.pwd) {
+    // Allow legacy stateless tokens that were minted without a password fingerprint.
+    if (user && payload.pwd && hash(user.password) !== payload.pwd) {
       user = null;
     }
   } else if (redis.enabled && authKey) {

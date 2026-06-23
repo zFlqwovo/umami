@@ -66,6 +66,15 @@ describe('checkAuth password fingerprint', () => {
     expect(result?.user?.id).toBe('user-1');
   });
 
+  test('authorizes a legacy stateless token that does not include a password fingerprint', async () => {
+    parseSecureTokenMock.mockReturnValue({ userId: 'user-1' } as any);
+    mockUser();
+
+    const result = await checkAuth(authedRequest());
+
+    expect(result?.user?.id).toBe('user-1');
+  });
+
   test('rejects a stateless token whose fingerprint predates a password change', async () => {
     // Token minted against the old password must stop working once the password changes.
     parseSecureTokenMock.mockReturnValue({
