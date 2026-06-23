@@ -137,7 +137,7 @@ async function relationalQuery(
     { ...filterContext.queryParams, websiteId, eventType, startDate, endDate },
     FUNCTION_NAME,
   );
-  const pages = rawPages.filter(page => !shouldSkipSnapshot(page.urlPath));
+  const pages = rawPages;
 
   if (!urlPath) {
     return { mode, pages, points: [], snapshot: null, scroll: emptyScroll() };
@@ -336,8 +336,7 @@ async function clickhouseQuery(
       urlPath: p.urlPath,
       count: Number(p.count),
       sessions: Number(p.sessions),
-    }))
-    .filter(page => !shouldSkipSnapshot(page.urlPath));
+    }));
 
   if (!urlPath) {
     return { mode, pages, points: [], snapshot: null, scroll: emptyScroll() };
@@ -561,7 +560,7 @@ async function getIframeSnapshot({
   pageW: number | null;
   pageH: number | null;
 }): Promise<HeatmapSnapshotIframe | null> {
-  if (!urlPath || !viewportW || !pageW || !pageH || shouldSkipSnapshot(urlPath)) {
+  if (!urlPath || !viewportW || !pageW || !pageH) {
     return null;
   }
 
@@ -621,11 +620,6 @@ function buildHeatmapPageUrl(domain: string | null | undefined, urlPath: string)
   } catch {
     return null;
   }
-}
-
-function shouldSkipSnapshot(urlPath: string) {
-  // Internal Umami app routes cannot be rendered from the tracked website domain.
-  return urlPath.startsWith('/teams/');
 }
 
 function pickSnapshotViewport(
