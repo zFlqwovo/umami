@@ -14,7 +14,7 @@ export function SessionInfo({ data }) {
   return (
     <Grid columns="repeat(auto-fit, minmax(200px, 1fr)" gap>
       <Info label={t(labels.distinctId)} icon={<KeyRound />}>
-        <span style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+        <span style={{ overflowWrap: 'anywhere' }}>
           {data?.distinctId}
         </span>
       </Info>
