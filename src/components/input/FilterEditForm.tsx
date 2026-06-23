@@ -75,46 +75,62 @@ export function FilterEditForm({ websiteId, onChange, onClose }: FilterEditFormP
     setCurrentCohort(type === 'cohort' ? id : undefined);
   };
 
+  const panelStyle = { overflowY: 'auto' as const, minHeight: 0 };
+
   return (
-    <Column width={isMobile ? 'auto' : '800px'} gap="6">
-      <Column minHeight="500px">
-        <Tabs>
-          <TabList>
-            <Tab id="fields">{t(labels.fields)}</Tab>
-            {!isPixelLink && (
-              <>
-                <Tab id="segments">{t(labels.segments)}</Tab>
-                <Tab id="cohorts">{t(labels.cohorts)}</Tab>
-              </>
-            )}
-          </TabList>
-          <TabPanel id="fields">
-            <FieldFilters
-              websiteId={websiteId}
-              value={currentFilters}
-              match={currentMatch}
-              onChange={setCurrentFilters}
-              onMatchChange={setCurrentMatch}
-              exclude={excludedFields}
-            />
-          </TabPanel>
-          <TabPanel id="segments">
-            <SegmentFilters
-              websiteId={websiteId}
-              segmentId={currentSegment}
-              onChange={handleSegmentChange}
-            />
-          </TabPanel>
-          <TabPanel id="cohorts">
-            <SegmentFilters
-              type="cohort"
-              websiteId={websiteId}
-              segmentId={currentCohort}
-              onChange={handleSegmentChange}
-            />
-          </TabPanel>
-        </Tabs>
-      </Column>
+    <Column
+      width={isMobile ? 'auto' : '800px'}
+      gap="6"
+      minHeight="500px"
+      style={{
+        maxHeight: isMobile
+          ? 'calc(100dvh - 64px)'
+          : 'calc(min(80dvh, 100dvh - 40px) - 64px)',
+      }}
+    >
+      <Tabs
+        style={{
+          flex: 1,
+          minHeight: 0,
+          gridTemplateRows: 'auto 1fr',
+          overflow: 'hidden',
+        }}
+      >
+        <TabList>
+          <Tab id="fields">{t(labels.fields)}</Tab>
+          {!isPixelLink && (
+            <>
+              <Tab id="segments">{t(labels.segments)}</Tab>
+              <Tab id="cohorts">{t(labels.cohorts)}</Tab>
+            </>
+          )}
+        </TabList>
+        <TabPanel id="fields" style={panelStyle}>
+          <FieldFilters
+            websiteId={websiteId}
+            value={currentFilters}
+            match={currentMatch}
+            onChange={setCurrentFilters}
+            onMatchChange={setCurrentMatch}
+            exclude={excludedFields}
+          />
+        </TabPanel>
+        <TabPanel id="segments" style={panelStyle}>
+          <SegmentFilters
+            websiteId={websiteId}
+            segmentId={currentSegment}
+            onChange={handleSegmentChange}
+          />
+        </TabPanel>
+        <TabPanel id="cohorts" style={panelStyle}>
+          <SegmentFilters
+            type="cohort"
+            websiteId={websiteId}
+            segmentId={currentCohort}
+            onChange={handleSegmentChange}
+          />
+        </TabPanel>
+      </Tabs>
       <Row
         alignItems="center"
         justifyContent="space-between"
