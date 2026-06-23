@@ -49,13 +49,13 @@
 }
 
 .pageButton:hover {
-  background: var(--interactive-bg-hover);
+  background: var(--surface-sunken);
 }
 
 .pageButtonSelected,
 .pageButtonSelected:hover {
-  background: var(--surface-inverted);
-  color: var(--surface-base);
+  background: var(--surface-sunken);
+  font-weight: 600;
 }
 
 .summaryHeader {
