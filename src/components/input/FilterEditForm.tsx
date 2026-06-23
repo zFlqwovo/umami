@@ -78,16 +78,7 @@ export function FilterEditForm({ websiteId, onChange, onClose }: FilterEditFormP
   const panelStyle = { overflowY: 'auto' as const, minHeight: 0 };
 
   return (
-    <Column
-      width={isMobile ? 'auto' : '800px'}
-      gap="6"
-      minHeight="500px"
-      style={{
-        maxHeight: isMobile
-          ? 'calc(100dvh - 64px)'
-          : 'calc(min(80dvh, 100dvh - 40px) - 64px)',
-      }}
-    >
+    <Column width={isMobile ? 'auto' : '800px'} gap="6" style={{ flex: 1, minHeight: 0 }}>
       <Tabs
         style={{
           flex: 1,
