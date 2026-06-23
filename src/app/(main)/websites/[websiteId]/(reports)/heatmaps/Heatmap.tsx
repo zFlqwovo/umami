@@ -572,17 +572,25 @@ function ClickHeatmapView({
   }, [hasSnapshot, snapshot?.id]);
   const overlayGutter = Math.max(48, Math.round((viewport?.width ?? 1920) * 0.04));
   const maxPointX = visible.reduce((max, point) => Math.max(max, point.pageX), 0);
-  const maxPointY = visible.reduce((max, point) => Math.max(max, point.pageY), 0);
+  // Size the canvas to the actual page content (snapshot/viewport height) only.
+  // Outlier clicks recorded far below the real content are clipped by the
+  // canvas's `overflow: hidden` rather than stretching the canvas and leaving a
+  // large empty band at the bottom.
   const baseWidth = Math.max(viewport?.pageW ?? 0, maxPointX + overlayGutter, 1);
-  const baseHeight = Math.max(viewport?.pageH ?? 0, maxPointY + overlayGutter, 640);
   const renderWidth = viewport?.width ?? snapshot?.viewportW ?? baseWidth;
-  const renderHeight = Math.max(viewport?.pageH ?? 0, snapshot?.pageH ?? 0, baseHeight);
+  // When we have a snapshot, its captured page height is the authoritative
+  // content height (it ends at the real page bottom). Use it directly so the
+  // canvas isn't stretched by an inflated aggregate `viewport.pageH` from tall
+  // outlier sessions. Outlier click dots below the content are clipped by the
+  // canvas's `overflow: hidden`. Fall back to the aggregate height only when no
+  // snapshot is available.
+  const contentHeight = snapshot?.pageH || viewport?.pageH || 0;
+  const renderHeight = Math.max(contentHeight, 640);
   const hasMeasuredWidth = Boolean(viewport?.width || snapshot?.viewportW || maxPointX);
   const fit = useCanvasFit(renderWidth, renderHeight);
   const canvasWidth = hasMeasuredWidth ? `${fit.width}px` : '100%';
   const canvasHeight = hasMeasuredWidth ? `${fit.height}px` : undefined;
   const overlayPageW = renderWidth;
-  const overlayPageH = renderHeight;
   const shouldRenderSnapshot = renderWidth > 0 && hasSnapshot;
   const showOverlay = !shouldRenderSnapshot || snapshotReady;
   const totalClicks = visible.reduce((sum, point) => sum + point.count, 0);
@@ -616,7 +624,7 @@ function ClickHeatmapView({
           >
             <Text color="muted" className={styles.summaryStat} title={bucketDescription}>
               {viewport
-                ? `${visible.length} positions - ${formatLongNumber(totalClicks)} clicks - screen width ${viewport.width}px`
+                ? `${visible.length} positions - ${formatLongNumber(totalClicks)} clicks`
                 : 'No click data for this page yet.'}
             </Text>
             <ScreenWidthSelect
@@ -663,7 +671,10 @@ function ClickHeatmapView({
                     const desiredSize = 24 + intensity * 36;
                     const size = desiredSize;
                     const centerX = Math.max(0, Math.min(overlayPageW, point.pageX));
-                    const centerY = Math.max(0, Math.min(overlayPageH, point.pageY));
+                    // Don't clamp to the canvas height: points below the real
+                    // content overflow and are clipped by the canvas instead of
+                    // piling up on the bottom edge.
+                    const centerY = Math.max(0, point.pageY);
 
                     return (
                       <div
@@ -785,7 +796,7 @@ function ScrollHeatmapView({
         >
           <Text color="muted" className={styles.summaryStat} title={bucketDescription}>
             {hasScrollData
-              ? `${formatLongNumber(totalSessions)} sessions - page ${pageW}x${pageH}${viewportH ? ` - viewport ${viewportW}x${viewportH}` : ''} - screen width ${viewport.width}px`
+              ? `${formatLongNumber(totalSessions)} sessions - page ${pageW}x${pageH}${viewportH ? ` - viewport ${viewportW}x${viewportH}` : ''}`
               : 'No scroll data for this page yet.'}
           </Text>
           <ScreenWidthSelect
